@@ -5,8 +5,8 @@ import { Footer } from '@/components/Footer';
 import { UserProfileProvider } from '@/lib/context/user-profile-context';
 
 export const metadata: Metadata = {
-  title: 'Kamuİlan AI - Akıllı Kamu & Memur Personel Alım Takip Platformu',
-  description: 'Resmî Gazete ve Kariyer Kapısı ilanlarını yapay zeka ile analiz eden ve profilinize göre Uygun / Belki / Uymuyor eşleştirmesi yapan akıllı platform.',
+  title: 'Kamu İlan - Resmî Gazete ve Kamu Personel Alım Platformu',
+  description: 'Türkiye genelindeki Resmî Gazete ve Kariyer Kapısı kamu personeli ve memur alım ilanlarını anlık takip edin, bölüm ve KPSS puanınıza göre eşleştirin.',
 };
 
 export default function RootLayout({

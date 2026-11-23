@@ -153,6 +153,19 @@ CREATE POLICY "Service role has full access to user_profiles"
     USING (auth.role() = 'service_role');
 
 -- ==============================================================================
+-- YETKİLENDİRME (GRANTS) - 42501 PERMISSION DENIED HATASINI ÖNLER
+-- ==============================================================================
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+
+-- ==============================================================================
 -- 100+ STANDART YÖK BÖLÜM SEED VERİSİ (LİSANS, ÖNLİSANS, LİSE)
 -- ==============================================================================
 INSERT INTO public.departments (name, education_level, aliases) VALUES

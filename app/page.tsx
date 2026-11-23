@@ -187,11 +187,11 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
             <div className="md:col-span-8 space-y-3">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/20 text-sky-200 text-xs font-semibold border border-sky-400/30">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Akıllı Kamu Personel Alım Platformu</span>
+                <Building2 className="w-3.5 h-3.5 text-sky-300" />
+                <span>Resmî Gazete ve Kariyer Kapısı Alımları</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-                Size Hangi Kamu İlanlarının Uyduğunu Öğrenin
+                Kriterlerinize Uygun Kamu İlanlarını Keşfedin
               </h1>
               <p className="text-slate-200 text-sm max-w-2xl leading-relaxed">
                 Bölümünüzü, KPSS/ALES puanınızı ve mezuniyet durumunuzu 1 dakikada girin. Yüzlerce sayfalık Resmî Gazete metinlerini okumak yerine yalnızca <strong>başvurabileceğiniz kadroları</strong> görün!

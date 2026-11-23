@@ -133,10 +133,10 @@ BAŞVURU ŞARTLARI:
           <span>Yönetim ve Manuel İlan Girişi</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-black">
-          Yapay Zeka Destekli İlan Ayrıştırıcı
+          Manuel İlan Girişi ve Otomatik Ayrıştırma
         </h1>
         <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-          Resmî Gazete veya kurum web sitesinden kopyaladığınız ham metni yapıştırın. Google Gemini AI modeli şartları, kadroları, KPSS ve bölümleri otomatik olarak yapılandırılmış JSON standardına dönüştürsün.
+          Resmî Gazete veya kurum web sitesinden kopyaladığınız metni yapıştırarak şartları, unvanları ve kontenjanları otomatik olarak sisteme ekleyin.
         </p>
       </div>
 
@@ -200,10 +200,10 @@ BAŞVURU ŞARTLARI:
           type="button"
           onClick={handleParseWithGemini}
           disabled={parsing}
-          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white text-sm font-bold shadow-md shadow-sky-600/20 transition-all disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold shadow-md transition-all disabled:opacity-50"
         >
-          <Sparkles className="w-4 h-4" />
-          <span>{parsing ? 'Gemini AI Analiz Ediyor...' : 'Gemini AI ile Ayrıştır'}</span>
+          <FileText className="w-4 h-4 text-sky-400" />
+          <span>{parsing ? 'Metin Analiz Ediliyor...' : 'İlanı Otomatik Ayrıştır'}</span>
         </button>
       </div>
 

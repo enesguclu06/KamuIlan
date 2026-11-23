@@ -11,13 +11,13 @@ export function Footer() {
           {/* Logo & Description */}
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center text-white font-bold">
+              <div className="w-8 h-8 rounded-lg bg-sky-600 flex items-center justify-center text-white font-bold">
                 <Building2 className="w-4 h-4" />
               </div>
-              <span className="text-white font-bold text-lg">Kamuİlan AI</span>
+              <span className="text-white font-bold text-lg">Kamu İlan</span>
             </div>
             <p className="text-slate-400 text-xs sm:text-sm max-w-md leading-relaxed">
-              Resmî Gazete ve Kariyer Kapısı personel alım ilanlarını yapay zeka ile standart formatta analiz eden, adayların mezuniyet, KPSS, ALES ve YDS puanlarına göre anlık eşleştirme yapan yeni nesil kamu iş platformu.
+              Resmî Gazete Çeşitli İlanlar ve Cumhurbaşkanlığı Kariyer Kapısı personel alım ilanlarını tek ekranda toplayan, adayların mezuniyet, KPSS, ALES ve YDS puanlarına göre anlık eşleştirme yapan bağımsız kamu ilan platformu.
             </p>
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
               <span className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 border border-slate-700">
@@ -25,8 +25,8 @@ export function Footer() {
                 Resmî Gazete & Kariyer Kapısı
               </span>
               <span className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 border border-slate-700">
-                <Sparkles className="w-3.5 h-3.5 text-sky-400" />
-                Yapay Zeka Destekli
+                <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
+                Otomatik Güncel İlan Akışı
               </span>
             </div>
           </div>
@@ -42,7 +42,7 @@ export function Footer() {
                 <Link href="/profil" className="hover:text-white transition-colors">Profil ve Kriterlerim</Link>
               </li>
               <li>
-                <Link href="/admin" className="hover:text-white transition-colors">İlan Analiz Paneli (AI)</Link>
+                <Link href="/admin" className="hover:text-white transition-colors">Manuel İlan Ekle</Link>
               </li>
               <li>
                 <a href="https://www.resmigazete.gov.tr" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Resmî Gazete Çeşitli İlanlar</a>
@@ -67,9 +67,9 @@ export function Footer() {
         </div>
 
         <div className="border-t border-slate-800 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <p>© {new Date().getFullYear()} Kamuİlan AI. Tüm hakları saklıdır.</p>
+          <p>© {new Date().getFullYear()} Kamu İlan. Tüm hakları saklıdır.</p>
           <p className="flex items-center gap-1">
-            Kamu adayları için özenle geliştirildi <Heart className="w-3.5 h-3.5 text-rose-500 inline fill-rose-500" />
+            Kamu personeli ve memur adayları için geliştirildi <Heart className="w-3.5 h-3.5 text-rose-500 inline fill-rose-500" />
           </p>
         </div>
       </div>

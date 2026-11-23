@@ -26,7 +26,7 @@ export function Navbar() {
   const navLinks = [
     { href: '/', label: 'Kamu İlanları', icon: Compass },
     { href: '/profil', label: 'Kriterlerim & CV', icon: UserCheck },
-    { href: '/admin', label: 'İlan Ekle (AI)', icon: ShieldCheck },
+    { href: '/admin', label: 'İlan Ekle', icon: ShieldCheck },
   ];
 
   return (
@@ -36,16 +36,15 @@ export function Navbar() {
           
           {/* Logo & Slogan */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20 group-hover:scale-105 transition-transform">
-              <Building2 className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-700 to-slate-900 flex items-center justify-center text-white shadow-md shadow-sky-950/20 group-hover:scale-105 transition-transform">
+              <Building2 className="w-5 h-5 text-sky-300" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5 font-bold text-slate-900 text-lg leading-tight">
-                <span>Kamuİlan</span>
-                <span className="text-sky-600">AI</span>
-                <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 tracking-wider">Memur & Personel</span>
+              <div className="flex items-center gap-2 font-bold text-slate-900 text-lg leading-tight">
+                <span>Kamu İlan</span>
+                <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 tracking-wider border border-slate-200">Resmi İlanlar</span>
               </div>
-              <p className="text-xs text-slate-500 font-medium hidden sm:block">Akıllı Kamu Alım Takip ve Eşleştirme</p>
+              <p className="text-xs text-slate-500 font-medium hidden sm:block">Kamu Personeli ve Memur Alım Portalı</p>
             </div>
           </Link>
 
@@ -65,7 +64,7 @@ export function Navbar() {
                   }`}
                 >
                   <Icon className={`w-4 h-4 ${isActive ? 'text-sky-600' : 'text-slate-400'}`} />
-                  {link.label}
+                  {link.label === 'İlan Ekle (AI)' ? 'İlan Ekle' : link.label}
                 </Link>
               );
             })}
