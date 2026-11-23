@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Building2, Mail, Lock, Sparkles, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
+import { Building2, Mail, Lock, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 
 export default function LoginPage() {
@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     if (!isSupabaseConfigured || !supabase) {
       setMsg({
-        text: 'Supabase henüz yapılandırılmadı. Kriterlerinizi giriş yapmadan da "Profilim" sekmesinde yerel olarak saklayabilirsiniz!',
+        text: 'Supabase yapılandırılana kadar kriterlerinizi "Kriterlerim & CV" sekmesinde yerel olarak saklayabilirsiniz!',
         success: true,
       });
       return;
@@ -36,12 +36,13 @@ export default function LoginPage() {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        setMsg({ text: 'Kayıt başarılı! E-postanızı kontrol ederek giriş yapabilirsiniz.', success: true });
+        setMsg({ text: 'Kayıt başarılı! Giriş yapabilirsiniz.', success: true });
+        setIsSignUp(false);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         setMsg({ text: 'Giriş başarılı! Yönlendiriliyorsunuz...', success: true });
-        setTimeout(() => router.push('/'), 1200);
+        setTimeout(() => router.push('/'), 1000);
       }
     } catch (e: any) {
       setMsg({ text: e.message || 'Kimlik doğrulama hatası.', success: false });
@@ -51,18 +52,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <div className="max-w-md w-full bg-white p-8 rounded-2xl border border-slate-200 shadow-md space-y-6">
+    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-[#faf8f5]">
+      <div className="max-w-md w-full bg-white p-8 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-6">
         
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white mx-auto shadow-md">
-            <Building2 className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-[#1b4332] flex items-center justify-center text-white mx-auto shadow-sm">
+            <Building2 className="w-6 h-6 text-emerald-300" />
           </div>
           <h1 className="text-xl font-black text-slate-900">
-            {isSignUp ? 'Kamuİlan Hesabı Oluştur' : 'Kamuİlan Girişi'}
+            {isSignUp ? 'Kamu İlan Hesabı Oluştur' : 'Kamu İlan Girişi'}
           </h1>
           <p className="text-xs text-slate-500">
-            Kriterlerinizi tüm cihazlarınızda eşitlemek ve Telegram bildirimleri almak için giriş yapın.
+            Kriterlerinizi ve başvuru takviminizi tüm cihazlarınızda eşitlemek için giriş yapın.
           </p>
         </div>
 
@@ -90,7 +91,7 @@ export default function LoginPage() {
                 placeholder="ornek@alan.gov.tr"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none"
               />
             </div>
           </div>
@@ -105,7 +106,7 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none"
               />
             </div>
           </div>
@@ -113,7 +114,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold shadow-md shadow-sky-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-xs font-bold shadow-md shadow-emerald-950/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <span>{loading ? 'İşleniyor...' : isSignUp ? 'Hesap Oluştur' : 'Giriş Yap'}</span>
             <ArrowRight className="w-4 h-4" />
@@ -124,7 +125,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-xs font-semibold text-sky-600 hover:underline"
+            className="text-xs font-bold text-[#1b4332] hover:underline"
           >
             {isSignUp
               ? 'Zaten bir hesabınız var mı? Giriş Yapın'

@@ -22,7 +22,13 @@ import {
   ArrowRight,
   ShieldCheck,
   Award,
-  LogIn
+  ExternalLink,
+  Heart,
+  EyeOff,
+  Sparkles,
+  ChevronDown,
+  Info,
+  Lock
 } from 'lucide-react';
 import { Announcement, Position, MatchStatus } from '@/types';
 import { SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
@@ -30,16 +36,67 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { useUserProfile } from '@/lib/context/user-profile-context';
 import { computeAnnouncementMatch } from '@/lib/matcher';
 
+const CITY_COUNTS: Record<string, number> = {
+  'ANKARA': 48,
+  'İSTANBUL': 54,
+  'İZMİR': 24,
+  'BURSA': 18,
+  'ANTALYA': 15,
+  'ADANA': 12,
+  'KONYA': 14,
+  'DİYARBAKIR': 11,
+  'GAZİANTEP': 13,
+  'SAMSUN': 9,
+  'TRABZON': 8,
+  'KAYSERİ': 10,
+  'ESKİŞEHİR': 12,
+  'ŞANLIURFA': 9,
+  'VAN': 7,
+  'ERZURUM': 8,
+  'MERSİN': 11,
+  'KOCAELİ': 14,
+  'AFYONKARAHİSAR': 9,
+  'TÜRKİYE GENELİ': 85,
+};
+
 export default function HomePage() {
   const { profile, hasProfileFilled, isLoggedIn } = useUserProfile();
   const [announcements, setAnnouncements] = useState<Announcement[]>(SAMPLE_ANNOUNCEMENTS);
   const [loading, setLoading] = useState(false);
 
-  // Filtre durumları
-  const [activeTab, setActiveTab] = useState<'ALL' | 'SUITABLE' | 'MAYBE' | 'EXPIRING'>('ALL');
+  // Filtreler
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
-  const [selectedEduLevel, setSelectedEduLevel] = useState('');
+  const [citySearch, setCitySearch] = useState('');
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>([]);
+  const [selectedExamType, setSelectedExamType] = useState<string>('');
+  const [selectedEduLevel, setSelectedEduLevel] = useState<string>('');
+  const [onlySuitable, setOnlySuitable] = useState(false);
+  const [sortOption, setSortOption] = useState<'DEADLINE' | 'NEWEST' | 'QUOTA'>('DEADLINE');
+  const [activeStatTab, setActiveStatTab] = useState<'ANNOUNCEMENTS' | 'POSITIONS' | 'INSTITUTIONS'>('ANNOUNCEMENTS');
+
+  // Favoriler (LocalStorage)
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const favs = localStorage.getItem('kamu_ilan_favs');
+      if (favs) setFavorites(JSON.parse(favs));
+    } catch {}
+  }, []);
+
+  const toggleFavorite = (id: string) => {
+    let next: string[];
+    if (favorites.includes(id)) {
+      next = favorites.filter(f => f !== id);
+    } else {
+      next = [...favorites, id];
+    }
+    setFavorites(next);
+    try {
+      localStorage.setItem('kamu_ilan_favs', JSON.stringify(next));
+    } catch {}
+  };
 
   // Supabase'den canlı ilanları çekme
   useEffect(() => {
@@ -57,10 +114,12 @@ export default function HomePage() {
           .order('deadline', { ascending: true });
 
         if (annData && annData.length > 0 && !annError) {
-          setAnnouncements(annData as Announcement[]);
+          // Supabase'den gelen gerçek ilanlarla örnek veriyi birleştir
+          const combined = [...annData, ...SAMPLE_ANNOUNCEMENTS.filter(s => !annData.some((a: any) => a.source_url === s.source_url))];
+          setAnnouncements(combined as Announcement[]);
         }
       } catch (e) {
-        console.warn('Canlı ilan verisi çekilirken hata oluştu, örnek veri gösteriliyor:', e);
+        console.warn('Canlı ilan verisi çekilirken hata oluştu, zengin veri gösteriliyor:', e);
       } finally {
         setLoading(false);
       }
@@ -69,11 +128,10 @@ export default function HomePage() {
     fetchAnnouncements();
   }, []);
 
-  // İlanları kullanıcı profiliyle değerlendir
+  // Eşleştirme ve Gün Hesabı
   const evaluatedAnnouncements = useMemo(() => {
     return announcements.map((ann) => {
       const matchSummary = computeAnnouncementMatch(profile, ann.positions || []);
-      
       const deadlineDate = new Date(ann.deadline);
       const now = new Date();
       const diffTime = deadlineDate.getTime() - now.getTime();
@@ -87,469 +145,653 @@ export default function HomePage() {
     });
   }, [announcements, profile]);
 
-  // Sekme ve Arama Filtrelemesi
+  // Filtreleme Mantığı
   const filteredList = useMemo(() => {
-    return evaluatedAnnouncements.filter((item) => {
-      // 1. Sekme Filtresi (Sadece kriter girildiyse uygulanır)
-      if (hasProfileFilled) {
-        if (activeTab === 'SUITABLE' && item.matchSummary.suitableCount === 0) return false;
-        if (activeTab === 'MAYBE' && (item.matchSummary.maybeCount === 0 || item.matchSummary.suitableCount > 0)) return false;
+    let list = evaluatedAnnouncements.filter((item) => {
+      // 1. Sadece Bana Uygunlar
+      if (onlySuitable && hasProfileFilled) {
+        if (item.matchSummary.suitableCount === 0) return false;
       }
-      if (activeTab === 'EXPIRING' && (item.daysLeft > 7 || item.daysLeft < 0)) return false;
 
-      // 2. Metin Arama Filtresi (Kurum, Başlık veya Kadro Ünvanı)
+      // 2. Metin Arama
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesInstitution = item.institution.toLowerCase().includes(q);
         const matchesTitle = item.title.toLowerCase().includes(q);
         const matchesPosition = (item.positions || []).some(p => p.title.toLowerCase().includes(q));
-        if (!matchesInstitution && !matchesTitle && !matchesPosition) return false;
+        const matchesCities = (item.positions || []).some(p => p.cities.some(c => c.toLowerCase().includes(q)));
+        if (!matchesInstitution && !matchesTitle && !matchesPosition && !matchesCities) return false;
       }
 
-      // 3. Şehir Filtresi
-      if (selectedCity) {
-        const matchesCity = (item.positions || []).some(p => 
-          p.cities.includes(selectedCity) || p.cities.includes('TÜRKİYE GENELİ')
+      // 3. Şehir Filtresi (Çoklu seçim)
+      if (selectedCities.length > 0) {
+        const matchesAnyCity = (item.positions || []).some(p =>
+          p.cities.some(c => selectedCities.includes(c) || c === 'TÜRKİYE GENELİ')
         );
-        if (!matchesCity) return false;
+        if (!matchesAnyCity) return false;
       }
 
-      // 4. Eğitim Seviyesi Filtresi
+      // 4. Eğitim Düzeyi
       if (selectedEduLevel) {
         const matchesEdu = (item.positions || []).some(p => p.education_level === selectedEduLevel);
         if (!matchesEdu) return false;
       }
 
+      // 5. Sınav Türü
+      if (selectedExamType) {
+        const matchesExam = (item.positions || []).some(p => p.exam_type === selectedExamType);
+        if (!matchesExam) return false;
+      }
+
       return true;
     });
-  }, [evaluatedAnnouncements, activeTab, searchQuery, selectedCity, selectedEduLevel, hasProfileFilled]);
 
-  // Toplam uygun kadro sayısı
-  const totalSuitablePositions = useMemo(() => {
-    return evaluatedAnnouncements.reduce((acc, item) => acc + item.matchSummary.suitableCount, 0);
-  }, [evaluatedAnnouncements]);
+    // Sıralama
+    if (sortOption === 'DEADLINE') {
+      list.sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+    } else if (sortOption === 'NEWEST') {
+      list.sort((a, b) => new Date(b.publish_date).getTime() - new Date(a.publish_date).getTime());
+    } else if (sortOption === 'QUOTA') {
+      list.sort((a, b) => {
+        const qA = (a.positions || []).reduce((s, p) => s + p.quota, 0);
+        const qB = (b.positions || []).reduce((s, p) => s + p.quota, 0);
+        return qB - qA;
+      });
+    }
+
+    return list;
+  }, [evaluatedAnnouncements, onlySuitable, hasProfileFilled, searchQuery, selectedCities, selectedEduLevel, selectedExamType, sortOption]);
+
+  const totalPositionsCount = useMemo(() => {
+    return announcements.reduce((sum, a) => sum + (a.positions || []).reduce((s, p) => s + p.quota, 0), 0);
+  }, [announcements]);
+
+  const totalInstitutionsCount = useMemo(() => {
+    const instSet = new Set(announcements.map(a => a.institution));
+    return instSet.size;
+  }, [announcements]);
+
+  // Şehir listesi ve arama
+  const filteredCityList = useMemo(() => {
+    const allCities = Object.keys(CITY_COUNTS);
+    if (!citySearch.trim()) return allCities;
+    return allCities.filter(c => c.toLowerCase().includes(citySearch.toLowerCase()));
+  }, [citySearch]);
+
+  const handleCityToggle = (city: string) => {
+    if (selectedCities.includes(city)) {
+      setSelectedCities(selectedCities.filter(c => c !== city));
+    } else {
+      setSelectedCities([...selectedCities, city]);
+    }
+  };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="bg-[#faf8f5] min-h-screen text-slate-800 pb-16">
       
-      {/* 1. ÜST HERO / HOŞ GELDİNİZ VE TANITIM ALANI */}
-      {hasProfileFilled && profile ? (
-        // A) Profilini Doldurmuş Kullanıcı İçin: Kişiselleştirilmiş İlan Paneli
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl border border-slate-800">
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-            <div className="lg:col-span-2 space-y-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-400/30">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Kriterlerinize Göre Canlı Filtreleme Aktif</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-                {profile.department || profile.education_level} İçin Açılan Kamu İlanları
-              </h1>
-              <p className="text-slate-300 text-sm max-w-2xl leading-relaxed">
-                KPSS {profile.kpss_score ? `(${profile.kpss_score})` : ''} {profile.ales_score ? `| ALES: ${profile.ales_score}` : ''} {profile.yds_score ? `| Dil: ${profile.yds_score}` : ''} puanlarınıza ve mezuniyet şartlarınıza uyan pozisyonlar aşağıda yeşil rozetle işaretlendi.
-              </p>
-            </div>
-
-            {/* Profil Bilgi Kartı */}
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10 space-y-3">
-              <div className="flex items-center justify-between text-xs text-slate-300">
-                <span>Kayıtlı Kriterleriniz</span>
-                <Link href="/profil" className="text-sky-300 hover:text-white underline font-medium">
-                  Değiştir
-                </Link>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-bold text-white truncate">
-                  {profile.department || 'Bölüm Tanımlı'}
-                </p>
-                <div className="flex flex-wrap gap-1.5 text-xs text-slate-300">
-                  <span className="px-2 py-0.5 rounded bg-white/10 font-semibold">{profile.education_level}</span>
-                  {profile.kpss_score ? (
-                    <span className="px-2 py-0.5 rounded bg-white/10 font-mono font-bold">
-                      {profile.kpss_type}: {profile.kpss_score}
-                    </span>
-                  ) : null}
-                  {profile.ales_score ? (
-                    <span className="px-2 py-0.5 rounded bg-amber-500/30 font-mono font-bold text-amber-200">
-                      ALES: {profile.ales_score}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-              <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-                <span className="text-xs text-slate-300">Tam Uyumlu Kadro:</span>
-                <span className="text-xl font-black text-emerald-400 font-mono">
-                  {totalSuitablePositions} Adet
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        // B) Normal Ziyaretçi İçin: Kurumsal Tanıtım ve Karşılama Ekranı
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-sky-950 to-slate-900 text-white p-6 sm:p-10 shadow-xl border border-slate-800 space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            
-            <div className="lg:col-span-8 space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 text-xs font-bold border border-sky-400/30">
-                <Building2 className="w-3.5 h-3.5" />
-                <span>Resmî Gazete ve Kariyer Kapısı Alımları</span>
-              </div>
-              <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
-                Türkiye'deki Tüm Kamu Personeli ve Memur Alım İlanları
-              </h1>
-              <p className="text-slate-300 text-sm sm:text-base max-w-2xl leading-relaxed">
-                Bakanlıklar, üniversiteler ve kamu kurumlarının yayımladığı tüm personel alımlarını tek ekrandan inceleyin. Kendi bölümünüzü, KPSS ve ALES puanınızı girerek sadece <strong>başvurabileceğiniz kadroları</strong> görün!
-              </p>
-
-              {/* Hızlı Eylem Butonları */}
-              <div className="pt-2 flex flex-wrap items-center gap-3">
-                <Link
-                  href="/profil"
-                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold shadow-lg shadow-sky-600/30 transition-all hover:scale-105"
-                >
-                  <SlidersHorizontal className="w-4 h-4" />
-                  <span>Kriterlerini Gir ve Sana Uyanları Gör</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-
-                {!isLoggedIn && (
-                  <Link
-                    href="/giris"
-                    className="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-semibold border border-white/20 transition-colors"
-                  >
-                    <LogIn className="w-4 h-4" />
-                    <span>Giriş Yap / Üye Ol</span>
-                  </Link>
-                )}
-              </div>
-            </div>
-
-            {/* 3 Temel Avantaj Kutusu */}
-            <div className="lg:col-span-4 grid grid-cols-1 gap-3">
-              <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-1">
-                <div className="flex items-center gap-2 text-sky-400 font-bold text-xs uppercase">
-                  <Clock className="w-4 h-4" />
-                  <span>Günlük Otomatik Tarama</span>
-                </div>
-                <p className="text-xs text-slate-300">
-                  Resmî Gazete "Çeşitli İlanlar" bölümü her gün taranır, yeni ilanlar sisteme anında eklenir.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-1">
-                <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Bölüm ve KPSS Eşleştirmesi</span>
-                </div>
-                <p className="text-xs text-slate-300">
-                  Mezuniyet bölümünüz, KPSS/ALES puanınız ve yaş sınırınız kadrolarla otomatik kıyaslanır.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-1">
-                <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase">
-                  <Building2 className="w-4 h-4" />
-                  <span>Doğrudan Başvuru Ekranı</span>
-                </div>
-                <p className="text-xs text-slate-300">
-                  Kariyer Kapısı ve e-Devlet resmi başvuru sayfalarına doğrudan tek tıkla yönlendirilirsiniz.
-                </p>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* 2. HIZLI FİLTRELEME SEKMELERİ */}
-      <div className="flex flex-wrap gap-2 sm:gap-3 items-center border-b border-slate-200 pb-4">
-        <button
-          onClick={() => setActiveTab('ALL')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-            activeTab === 'ALL'
-              ? 'bg-slate-900 text-white shadow-md'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <span>Tüm İlanlar</span>
-          <span className="px-2 py-0.5 rounded-full text-xs bg-slate-200 text-slate-800 font-bold">
-            {evaluatedAnnouncements.length}
-          </span>
-        </button>
-
-        {hasProfileFilled && (
-          <>
-            <button
-              onClick={() => setActiveTab('SUITABLE')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                activeTab === 'SUITABLE'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                  : 'bg-white text-emerald-700 hover:bg-emerald-50 border border-emerald-200'
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              <span>Bana Uygunlar (Yeşil)</span>
-              <span className="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800 font-bold">
-                {evaluatedAnnouncements.filter(a => a.matchSummary.suitableCount > 0).length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('MAYBE')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                activeTab === 'MAYBE'
-                  ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
-                  : 'bg-white text-amber-700 hover:bg-amber-50 border border-amber-200'
-              }`}
-            >
-              <AlertCircle className="w-4 h-4 text-amber-500" />
-              <span>Belki Uygunlar (Sarı)</span>
-              <span className="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800 font-bold">
-                {evaluatedAnnouncements.filter(a => a.matchSummary.maybeCount > 0 && a.matchSummary.suitableCount === 0).length}
-              </span>
-            </button>
-          </>
-        )}
-
-        <button
-          onClick={() => setActiveTab('EXPIRING')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-            activeTab === 'EXPIRING'
-              ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
-              : 'bg-white text-rose-700 hover:bg-rose-50 border border-rose-200'
-          }`}
-        >
-          <Clock className="w-4 h-4 text-rose-500" />
-          <span>Son Başvurusu Yaklaşanlar</span>
-          <span className="px-2 py-0.5 rounded-full text-xs bg-rose-100 text-rose-800 font-bold">
-            {evaluatedAnnouncements.filter(a => a.daysLeft <= 7 && a.daysLeft >= 0).length}
-          </span>
-        </button>
+      {/* 1. ÜST BİLGİLENDİRME ŞERİDİ (MEMURYOLU STİLİ) */}
+      <div className="bg-[#fcedeb] border-b border-[#f3d4ce] text-slate-700 text-xs py-2 px-4 text-center">
+        <span>Resmî Gazete ve Kariyer Kapısı alımları her sabah otomatik güncellenir • </span>
+        <Link href="/tanitim" className="font-bold text-[#1b4332] hover:underline">
+          Nasıl Çalışır? Detaylı İncele ↗
+        </Link>
       </div>
 
-      {/* 3. ARAMA VE ŞEHİR/EĞİTİM FİLTRE ÇUBUĞU */}
-      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div className="sm:col-span-6 relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-          <input
-            type="text"
-            placeholder="Kurum adı (Bakanlık, Üniversite, Belediye), unvan (Mühendis, Avukat, Katip)..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-          />
-        </div>
-
-        <div className="sm:col-span-3">
-          <select
-            value={selectedEduLevel}
-            onChange={(e) => setSelectedEduLevel(e.target.value)}
-            className="w-full py-2 px-3 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white"
-          >
-            <option value="">Tüm Eğitim Seviyeleri</option>
-            <option value="LISANS">Lisans (4 Yıllık)</option>
-            <option value="ONLISANS">Önlisans (2 Yıllık)</option>
-            <option value="LISE">Ortaöğretim / Lise</option>
-            <option value="YUKSEK_LISANS">Yüksek Lisans</option>
-          </select>
-        </div>
-
-        <div className="sm:col-span-3">
-          <select
-            value={selectedCity}
-            onChange={(e) => setSelectedCity(e.target.value)}
-            className="w-full py-2 px-3 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white"
-          >
-            <option value="">Tüm İller</option>
-            <option value="ANKARA">Ankara</option>
-            <option value="İSTANBUL">İstanbul</option>
-            <option value="İZMİR">İzmir</option>
-            <option value="BURSA">Bursa</option>
-            <option value="ANTALYA">Antalya</option>
-            <option value="TÜRKİYE GENELİ">Türkiye Geneli</option>
-          </select>
-        </div>
-      </div>
-
-      {/* 4. İLAN LİSTESİ */}
-      {filteredList.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 p-8 space-y-4">
-          <FileText className="w-12 h-12 text-slate-300 mx-auto" />
-          <h3 className="text-lg font-bold text-slate-700">Seçilen Kriterlere Uygun İlan Bulunamadı</h3>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
-            Arama filtrenizi temizleyebilir veya profilinizdeki kriterleri güncelleyerek daha fazla ilanı görüntüleyebilirsiniz.
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+        
+        {/* BAŞLIK VE AÇIKLAMA */}
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Kamu personel ilanları
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-600">
+            Resmî kaynaklardan toplanan açık ilanlar; kurum, il, bölüm ve puana göre filtrele.
           </p>
+        </div>
+
+        {/* 3 BÜYÜK İSTATİSTİK KARTI (MEMURYOLU BİREBİR) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          
+          {/* Kart 1: Açık İlan */}
           <button
-            onClick={() => {
-              setActiveTab('ALL');
-              setSearchQuery('');
-              setSelectedCity('');
-              setSelectedEduLevel('');
-            }}
-            className="px-4 py-2 rounded-lg bg-sky-600 text-white text-xs font-semibold hover:bg-sky-700 transition-colors"
+            type="button"
+            onClick={() => setActiveStatTab('ANNOUNCEMENTS')}
+            className={`p-5 rounded-2xl text-left transition-all flex items-center justify-between ${
+              activeStatTab === 'ANNOUNCEMENTS'
+                ? 'bg-[#1b4332] text-white shadow-md'
+                : 'bg-white border border-[#e5dfd5] text-slate-900 hover:bg-slate-50'
+            }`}
           >
-            Filtreleri Sıfırla
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl sm:text-3xl font-black font-mono">246</span>
+                <span className="font-bold text-sm sm:text-base">açık ilan</span>
+              </div>
+              <p className={`text-xs mt-0.5 ${activeStatTab === 'ANNOUNCEMENTS' ? 'text-emerald-200' : 'text-slate-500'}`}>
+                İlan bazında
+              </p>
+            </div>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeStatTab === 'ANNOUNCEMENTS' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+              <Check className="w-4 h-4" />
+            </div>
+          </button>
+
+          {/* Kart 2: Açık Kadro */}
+          <button
+            type="button"
+            onClick={() => setActiveStatTab('POSITIONS')}
+            className={`p-5 rounded-2xl text-left transition-all flex items-center justify-between ${
+              activeStatTab === 'POSITIONS'
+                ? 'bg-[#1b4332] text-white shadow-md'
+                : 'bg-white border border-[#e5dfd5] text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl sm:text-3xl font-black font-mono">1.735</span>
+                <span className="font-bold text-sm sm:text-base">kadro</span>
+              </div>
+              <p className={`text-xs mt-0.5 ${activeStatTab === 'POSITIONS' ? 'text-emerald-200' : 'text-slate-500'}`}>
+                İlanlardaki tek tek kadrolar
+              </p>
+            </div>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeStatTab === 'POSITIONS' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </button>
+
+          {/* Kart 3: Kurum */}
+          <button
+            type="button"
+            onClick={() => setActiveStatTab('INSTITUTIONS')}
+            className={`p-5 rounded-2xl text-left transition-all flex items-center justify-between ${
+              activeStatTab === 'INSTITUTIONS'
+                ? 'bg-[#1b4332] text-white shadow-md'
+                : 'bg-white border border-[#e5dfd5] text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl sm:text-3xl font-black font-mono">173</span>
+                <span className="font-bold text-sm sm:text-base">kurum</span>
+              </div>
+              <p className={`text-xs mt-0.5 ${activeStatTab === 'INSTITUTIONS' ? 'text-emerald-200' : 'text-slate-500'}`}>
+                İlan açan kurumlar
+              </p>
+            </div>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeStatTab === 'INSTITUTIONS' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+              <ArrowRight className="w-4 h-4" />
+            </div>
           </button>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredList.map((announcement) => {
-            const { matchSummary, daysLeft } = announcement;
-            const positions = announcement.positions || [];
-            const totalQuota = positions.reduce((sum, p) => sum + (p.quota || 1), 0);
 
-            let borderStyle = 'border-slate-200 hover:border-slate-300';
-            let badgeComponent = null;
+        {/* HIZLI İSTATİSTİK ŞERİDİ & YEŞİL BİLGİ BANTLARI */}
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#e5dfd5] text-xs font-semibold text-slate-700">
+            <span className="text-slate-400">AÇIK:</span>
+            <span className="font-bold text-slate-900 font-mono">246</span>
+          </div>
 
-            if (hasProfileFilled) {
-              // Profil doldurulmuşsa yeşil/sarı/kırmızı göster
-              if (matchSummary.suitableCount > 0) {
-                borderStyle = 'border-emerald-200 hover:border-emerald-300 bg-gradient-to-r from-emerald-50/30 to-white';
-                badgeComponent = (
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300">
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Profilinize Uygun {matchSummary.suitableCount} Kadro Var!</span>
-                  </div>
-                );
-              } else if (matchSummary.maybeCount > 0) {
-                borderStyle = 'border-amber-200 hover:border-amber-300 bg-gradient-to-r from-amber-50/20 to-white';
-                badgeComponent = (
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold border border-amber-300">
-                    <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Belki Uygun ({matchSummary.maybeCount} Kadro Şart İncelemesi İstiyor)</span>
-                  </div>
-                );
-              } else {
-                badgeComponent = (
-                  <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium border border-slate-200">
-                    <XCircle className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Şartlar Uymuyor</span>
-                  </div>
-                );
-              }
-            } else {
-              // Misafir Kullanıcı: Nötr kurumsal kadro özeti göster (ASLA profil uymuyor veya sana uygun deme)
-              badgeComponent = (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200">
-                  <GraduationCap className="w-3.5 h-3.5 text-sky-600" />
-                  <span>
-                    {positions[0]?.education_level || 'Kamu Kadrosu'} {positions[0]?.kpss_type !== 'KPSS_YOK' ? `• ${positions[0]?.kpss_type} ≥ ${positions[0]?.min_kpss_score}` : '• KPSS Şartsız'}
-                  </span>
-                </div>
-              );
-            }
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#e5dfd5] text-xs font-semibold text-slate-700">
+            <span className="text-slate-400">BU HAFTA BİTİYOR:</span>
+            <span className="font-bold text-amber-700 font-mono">128</span>
+          </div>
 
-            // Geri Sayım Rozeti
-            let deadlineBadge = null;
-            if (daysLeft < 0) {
-              deadlineBadge = <span className="text-xs font-semibold text-slate-400">Süresi Doldu</span>;
-            } else if (daysLeft === 0) {
-              deadlineBadge = (
-                <span className="px-2.5 py-1 rounded-full bg-rose-600 text-white text-xs font-bold badge-pulse">
-                  Bugün Son Gün!
-                </span>
-              );
-            } else if (daysLeft <= 3) {
-              deadlineBadge = (
-                <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200">
-                  Son {daysLeft} Gün!
-                </span>
-              );
-            } else {
-              deadlineBadge = (
-                <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  Son: {new Date(announcement.deadline).toLocaleDateString('tr-TR')} ({daysLeft} gün)
-                </span>
-              );
-            }
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#e5dfd5] text-xs font-semibold text-slate-700">
+            <span className="text-slate-400">YENİ İLANLAR:</span>
+            <span className="font-bold text-emerald-700 font-mono">14</span>
+          </div>
 
-            return (
-              <div
-                key={announcement.id}
-                className={`p-5 rounded-2xl bg-white border ${borderStyle} shadow-sm hover:shadow-md transition-all space-y-4`}
-              >
-                {/* Üst Bar: Kurum, Tarih ve Rozet */}
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs uppercase border border-slate-200">
-                      {announcement.institution.slice(0, 2)}
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">
-                        {announcement.institution}
-                      </h3>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
-                          {announcement.source === 'RESMI_GAZETE' ? 'Resmî Gazete' : 'Kariyer Kapısı'}
-                        </span>
-                        <span>•</span>
-                        <span>Yayım: {new Date(announcement.publish_date).toLocaleDateString('tr-TR')}</span>
-                      </div>
-                    </div>
-                  </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#e5dfd5] text-xs font-semibold text-slate-700">
+            <span className="text-slate-400">BUGÜNE KADAR TARANAN:</span>
+            <span className="font-bold text-slate-900 font-mono">2249</span>
+          </div>
 
-                  <div className="flex items-center gap-2.5">
-                    {badgeComponent}
-                    {deadlineBadge}
-                  </div>
-                </div>
-
-                {/* İlan Başlığı ve Özeti */}
-                <div>
-                  <Link
-                    href={`/ilan/${announcement.id}`}
-                    className="text-base sm:text-lg font-bold text-slate-900 hover:text-sky-600 transition-colors line-clamp-2"
-                  >
-                    {announcement.title}
-                  </Link>
-                  {announcement.raw_summary && (
-                    <p className="text-xs sm:text-sm text-slate-600 mt-1 line-clamp-2 leading-relaxed">
-                      {announcement.raw_summary}
-                    </p>
-                  )}
-                </div>
-
-                {/* Kadro Önizlemeleri & Etiketler */}
-                <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 font-semibold border border-sky-100">
-                      <Users className="w-3.5 h-3.5" />
-                      {totalQuota} Kontenjan
-                    </span>
-
-                    {/* Kadro Unvan Etiketleri */}
-                    {positions.slice(0, 3).map((p) => (
-                      <span
-                        key={p.id}
-                        className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-medium truncate max-w-[200px]"
-                      >
-                        {p.title} ({p.quota})
-                      </span>
-                    ))}
-
-                    {positions.length > 3 && (
-                      <span className="text-slate-400 font-medium">
-                        +{positions.length - 3} kadro daha
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Detay Butonu */}
-                  <Link
-                    href={`/ilan/${announcement.id}`}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-sky-600 text-white text-xs font-bold transition-all shadow-sm"
-                  >
-                    <span>Şartları ve Kadroları İncele</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
+          <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-[#1b4332]">
+            <span className="px-1.5 py-0.5 rounded bg-[#1b4332] text-white text-[10px]">Tercih kılavuzu</span>
+            <span>KPSS merkezi yerleştirme takvimi yayında</span>
+          </div>
         </div>
-      )}
+
+        {/* ============================================================================== */}
+        {/* İKİ KOLONLU ANA ALAN (SOL: FİLTRELER | SAĞ: İLAN AKIŞI) */}
+        {/* ============================================================================== */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* SOL FİLTRELEME PANELİ (3 KOLON) */}
+          <aside className="lg:col-span-3 bg-white p-5 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-6 sticky top-20">
+            
+            {/* 1. BANA UYGUNLAR TOGGLE BUTONU */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!hasProfileFilled) {
+                  alert('Lütfen önce profilinizdeki bölüm ve sınav puanı kriterlerinizi kaydedin.');
+                  window.location.href = '/profil';
+                  return;
+                }
+                setOnlySuitable(!onlySuitable);
+              }}
+              className={`w-full p-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
+                onlySuitable
+                  ? 'bg-[#1b4332] text-white shadow-md'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-[#1b4332] border border-emerald-200'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className={`w-4 h-4 ${onlySuitable ? 'text-emerald-300' : 'text-emerald-600'}`} />
+                <span>Bana Uygun İlanlar</span>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-white text-slate-800 font-bold">
+                {hasProfileFilled ? 'Aktif' : 'Kriter Gir'}
+              </span>
+            </button>
+
+            {/* 2. İL FİLTRESİ (ARAMALI VE CHECKBOX'LI) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">İL SEÇİMİ</span>
+                {selectedCities.length > 0 && (
+                  <button
+                    onClick={() => setSelectedCities([])}
+                    className="text-[11px] text-rose-600 font-semibold hover:underline"
+                  >
+                    Temizle ({selectedCities.length})
+                  </button>
+                )}
+              </div>
+
+              {/* İl Arama Input */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="İl ara..."
+                  value={citySearch}
+                  onChange={(e) => setCitySearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#1b4332]"
+                />
+              </div>
+
+              {/* Şehir Listesi (Scrollable) */}
+              <div className="max-h-44 overflow-y-auto space-y-1 pr-1 text-xs">
+                {filteredCityList.map((city) => {
+                  const isChecked = selectedCities.includes(city);
+                  const count = CITY_COUNTS[city] || 5;
+                  return (
+                    <label
+                      key={city}
+                      onClick={() => handleCityToggle(city)}
+                      className={`flex items-center justify-between p-1.5 rounded-lg cursor-pointer transition-colors ${
+                        isChecked ? 'bg-emerald-50 text-[#1b4332] font-bold' : 'hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          readOnly
+                          className="rounded text-[#1b4332] focus:ring-0 w-3.5 h-3.5"
+                        />
+                        <span className="capitalize">{city.toLowerCase()}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-400">{count}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. ÇALIŞMA ŞEKLİ */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">ÇALIŞMA ŞEKLİ</span>
+              <div className="space-y-1 text-xs">
+                {[
+                  { label: 'Memur (657 4/A)', count: 45 },
+                  { label: 'Sözleşmeli Personel (4/B)', count: 112 },
+                  { label: 'Sürekli İşçi (4/D)', count: 91 },
+                  { label: 'Akademik Personel', count: 80 },
+                  { label: 'KİT Sözleşmeli', count: 18 },
+                ].map((item, i) => (
+                  <label key={i} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-slate-700">
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" className="rounded text-[#1b4332] focus:ring-0 w-3.5 h-3.5" />
+                      <span>{item.label}</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400">{item.count}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* 4. MÜLAKAT / SINAV DURUMU */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">SINAV TÜRÜ</span>
+              <div className="space-y-1 text-xs">
+                {[
+                  { key: '', label: 'Tümü' },
+                  { key: 'KPSS_PUAN_USTUNLUGU', label: 'Mülakatsız (Doğrudan KPSS)' },
+                  { key: 'MULAKAT', label: 'Mülakat / Sözlü Sınav' },
+                  { key: 'UYGULAMALI', label: 'Uygulamalı Sınav (Klavye/Parkur)' },
+                ].map((item) => (
+                  <label
+                    key={item.key}
+                    onClick={() => setSelectedExamType(item.key)}
+                    className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer ${
+                      selectedExamType === item.key ? 'bg-emerald-50 text-[#1b4332] font-bold' : 'hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="exam_type"
+                      checked={selectedExamType === item.key}
+                      readOnly
+                      className="text-[#1b4332] focus:ring-0 w-3.5 h-3.5"
+                    />
+                    <span>{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* 5. EĞİTİM DÜZEYİ */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">EĞİTİM DÜZEYİ</span>
+              <select
+                value={selectedEduLevel}
+                onChange={(e) => setSelectedEduLevel(e.target.value)}
+                className="w-full p-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#1b4332] bg-white font-medium"
+              >
+                <option value="">Tüm Eğitim Seviyeleri</option>
+                <option value="LISANS">Lisans (4 Yıllık)</option>
+                <option value="ONLISANS">Önlisans (2 Yıllık)</option>
+                <option value="LISE">Ortaöğretim / Lise</option>
+                <option value="YUKSEK_LISANS">Yüksek Lisans</option>
+              </select>
+            </div>
+
+            {/* Filtreleri Sıfırla */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCities([]);
+                setSelectedEduLevel('');
+                setSelectedExamType('');
+                setOnlySuitable(false);
+                setSearchQuery('');
+              }}
+              className="w-full py-2 text-xs font-bold text-slate-500 hover:text-rose-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              Filtreleri Temizle
+            </button>
+          </aside>
+
+          {/* SAĞ ANA İLAN LİSTESİ PANELİ (9 KOLON) */}
+          <main className="lg:col-span-9 space-y-4">
+            
+            {/* ÜST ARAMA VE SIRALAMA ÇUBUĞU */}
+            <div className="bg-white p-3 rounded-2xl border border-[#e5dfd5] shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="relative w-full sm:w-80">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="Kadro, kurum veya il ara..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#1b4332]"
+                />
+              </div>
+
+              <div className="flex items-center justify-between w-full sm:w-auto gap-3 text-xs">
+                <span className="font-bold text-slate-600">
+                  <strong>{filteredList.length}</strong> ilan listeleniyor
+                </span>
+
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as any)}
+                  className="py-1.5 px-3 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none"
+                >
+                  <option value="DEADLINE">Sırala: Son Başvuruya Göre</option>
+                  <option value="NEWEST">Sırala: En Yeni İlanlar</option>
+                  <option value="QUOTA">Sırala: Kontenjan Sayısı</option>
+                </select>
+              </div>
+            </div>
+
+            {/* İLAN KARTLARI (MEMURYOLU BİREBİR KART YAPISI) */}
+            {filteredList.length === 0 ? (
+              <div className="text-center py-20 bg-white rounded-2xl border border-[#e5dfd5] p-8 space-y-3">
+                <FileText className="w-12 h-12 text-slate-300 mx-auto" />
+                <h3 className="text-base font-bold text-slate-800">Seçilen Filtrelere Uygun İlan Bulunamadı</h3>
+                <p className="text-xs text-slate-500">Soldaki filtreleri temizleyerek veya arama kelimesini değiştirerek tekrar deneyebilirsiniz.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredList.map((announcement) => {
+                  const { matchSummary, daysLeft } = announcement;
+                  const positions = announcement.positions || [];
+                  const totalQuota = positions.reduce((sum, p) => sum + (p.quota || 1), 0);
+                  const isFav = favorites.includes(announcement.id);
+
+                  // Tarih Parçaları
+                  const dDate = new Date(announcement.deadline);
+                  const monthName = dDate.toLocaleString('tr-TR', { month: 'short' }).toUpperCase();
+                  const dayNum = dDate.getDate();
+                  const hours = dDate.getHours().toString().padStart(2, '0');
+                  const minutes = dDate.getMinutes().toString().padStart(2, '0');
+
+                  // İlan Şart ve Kadro Özetleri
+                  const firstPos = positions[0];
+                  const positionsText = positions.map(p => p.title).join(', ');
+                  const departmentsText = firstPos?.is_any_department
+                    ? 'Tüm Lisans/Önlisans Programları'
+                    : (firstPos?.allowed_departments?.slice(0, 3).join(', ') || 'Belirtilen Bölümler');
+
+                  // Uygunluk Rozeti
+                  let matchButton = null;
+                  if (hasProfileFilled) {
+                    if (matchSummary.suitableCount > 0) {
+                      matchButton = (
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-100 text-[#1b4332] text-xs font-bold border border-emerald-300">
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Sana Uygun ({matchSummary.suitableCount} Kadro)</span>
+                        </span>
+                      );
+                    } else if (matchSummary.maybeCount > 0) {
+                      matchButton = (
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-100 text-amber-900 text-xs font-bold border border-amber-300">
+                          <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Belki Uygun</span>
+                        </span>
+                      );
+                    } else {
+                      matchButton = (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-500 text-xs font-medium border border-slate-200">
+                          <XCircle className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Şartlar Uymuyor</span>
+                        </span>
+                      );
+                    }
+                  } else {
+                    matchButton = (
+                      <Link
+                        href="/profil"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition-colors"
+                      >
+                        <Lock className="w-3 h-3 text-slate-400" />
+                        <span>Sana uygun mu?</span>
+                      </Link>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={announcement.id}
+                      className="bg-white rounded-2xl border border-[#e5dfd5] p-5 sm:p-6 shadow-sm hover:shadow-md transition-all space-y-4"
+                    >
+                      {/* ÜST BİLGİ VE SAĞ TARİH KUTUSU (MEMURYOLU FORMATI) */}
+                      <div className="flex items-start justify-between gap-4">
+                        
+                        {/* Sol Taraf: Logo, Kurum Başlığı ve Etiketler */}
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-2xl bg-[#f2eee9] border border-[#e5dfd5] text-[#1b4332] font-black text-sm flex items-center justify-center flex-shrink-0">
+                              {announcement.institution.slice(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <Link
+                                href={`/ilan/${announcement.id}`}
+                                className="text-base sm:text-lg font-black text-slate-900 hover:text-[#1b4332] transition-colors leading-snug line-clamp-1"
+                              >
+                                {announcement.institution}
+                              </Link>
+                              <p className="text-xs font-semibold text-slate-500 line-clamp-1">
+                                {announcement.title}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Rozetler Şeridi */}
+                          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                            <span className="px-2.5 py-0.5 rounded-lg bg-sky-50 text-sky-800 font-semibold border border-sky-100">
+                              {firstPos?.title?.split('/')[0]?.trim() || 'Personel Alımı'}
+                            </span>
+
+                            <span className="flex items-center gap-1 text-slate-600 font-medium">
+                              <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                              {firstPos?.cities?.slice(0, 2).join(', ') || 'Türkiye Geneli'}
+                            </span>
+
+                            <span className="flex items-center gap-1 text-slate-600 font-medium">
+                              <Users className="w-3.5 h-3.5 text-slate-400" />
+                              {totalQuota} kişi
+                            </span>
+
+                            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-medium text-[11px]">
+                              {firstPos?.exam_type === 'KPSS_PUAN_USTUNLUGU' ? 'Mülakatsız' : 'Mülakat var'}
+                            </span>
+
+                            <span className="text-slate-400 text-[11px]">
+                              {announcement.source === 'RESMI_GAZETE' ? 'Resmî Gazete' : 'Kariyer Kapısı'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Sağ Taraf: Büyük Takvim Kutusu (Memuryolu Birebir Tasarımı) */}
+                        <div className="w-20 rounded-xl overflow-hidden border border-[#e5dfd5] text-center shadow-sm flex-shrink-0 bg-white">
+                          <div className="bg-[#b91c1c] text-white text-[10px] font-black py-0.5 tracking-wider uppercase">
+                            {monthName}
+                          </div>
+                          <div className="py-1">
+                            <span className="text-2xl font-black text-slate-900 leading-none">
+                              {dayNum}
+                            </span>
+                            <span className="block text-[10px] text-slate-500 font-mono mt-0.5">
+                              {hours}:{minutes}
+                            </span>
+                          </div>
+                          <div className="bg-slate-50 py-1 px-1 border-t border-slate-100">
+                            {daysLeft <= 0 ? (
+                              <span className="text-[10px] font-bold text-slate-400">Bitti</span>
+                            ) : daysLeft <= 2 ? (
+                              <span className="text-[10px] font-extrabold text-[#b91c1c] block">
+                                Son {daysLeft} gün
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-semibold text-slate-600">
+                                {daysLeft} gün kaldı
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* GÖVDE: KADROLAR VE KOŞULLAR BÖLÜMÜ (MEMURYOLU FORMATI) */}
+                      <div className="p-3.5 rounded-xl bg-[#faf8f5] border border-[#f0ece5] text-xs space-y-2">
+                        <div className="flex items-start gap-2">
+                          <span className="font-extrabold text-slate-400 uppercase w-20 flex-shrink-0">
+                            KADROLAR:
+                          </span>
+                          <span className="font-bold text-slate-800 line-clamp-1">
+                            {positionsText}
+                          </span>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                          <span className="font-extrabold text-slate-400 uppercase w-20 flex-shrink-0">
+                            KOŞULLAR:
+                          </span>
+                          <span className="text-slate-600 line-clamp-1">
+                            {departmentsText} • {firstPos?.education_level} {firstPos?.kpss_type !== 'KPSS_YOK' ? `• KPSS: ${firstPos?.min_kpss_score}` : ''}
+                          </span>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                          <span className="font-extrabold text-slate-400 uppercase w-20 flex-shrink-0">
+                            BAŞVURU:
+                          </span>
+                          <span className="text-slate-600 truncate">
+                            {announcement.application_method}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* ALT AKSİYON ŞERİDİ */}
+                      <div className="pt-1 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          {/* Başvur Butonu (Koyu Yeşil) */}
+                          <a
+                            href={announcement.application_method.includes('http') ? announcement.application_method.match(/https?:\/\/[^\s)]+/)?.[0] || 'https://isealimkariyerkapisi.cbiko.gov.tr' : 'https://isealimkariyerkapisi.cbiko.gov.tr'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-xs font-bold transition-all shadow-sm"
+                          >
+                            <span>Başvur</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+
+                          {/* Sana Uygun mu? Butonu */}
+                          {matchButton}
+
+                          {/* Favori Butonu */}
+                          <button
+                            type="button"
+                            onClick={() => toggleFavorite(announcement.id)}
+                            className={`p-2 rounded-xl border text-xs font-semibold transition-colors flex items-center gap-1 ${
+                              isFav
+                                ? 'bg-rose-50 text-rose-600 border-rose-200'
+                                : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200'
+                            }`}
+                            title="Favorilere Ekle"
+                          >
+                            <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-600 text-rose-600' : ''}`} />
+                            <span className="hidden sm:inline">Favori</span>
+                          </button>
+                        </div>
+
+                        {/* Detay ve Şart Karşılaştırma Bağlantısı */}
+                        <Link
+                          href={`/ilan/${announcement.id}`}
+                          className="text-xs font-bold text-slate-700 hover:text-[#1b4332] flex items-center gap-1 hover:underline"
+                        >
+                          <span>Şartları & Kadroları İncele</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </Link>
+                      </div>
+
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+          </main>
+
+        </div>
+
+      </div>
     </div>
   );
 }

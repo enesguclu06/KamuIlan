@@ -6,127 +6,156 @@ import { usePathname } from 'next/navigation';
 import { 
   Building2, 
   UserCheck, 
-  Sparkles, 
   Menu, 
   X, 
   ShieldCheck, 
   Compass,
-  GraduationCap,
+  Calendar,
+  Heart,
+  Bell,
+  ChevronDown,
+  User,
   SlidersHorizontal,
   LogIn,
-  LogOut
+  LogOut,
+  PlusCircle,
+  Sparkles
 } from 'lucide-react';
 import { useUserProfile } from '@/lib/context/user-profile-context';
 
 export function Navbar() {
   const pathname = usePathname();
-  const { profile, hasProfileFilled, isLoggedIn, userEmail, logout } = useUserProfile();
+  const { profile, hasProfileFilled, isLoggedIn, logout } = useUserProfile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
   const navLinks = [
-    { href: '/', label: 'Kamu İlanları', icon: Compass },
+    { href: '/', label: 'İlanlar', icon: Compass },
+    { href: '/tanitim', label: 'Tanıtım', icon: Sparkles },
     { href: '/profil', label: 'Kriterlerim & CV', icon: UserCheck },
-    { href: '/admin', label: 'İlan Ekle', icon: ShieldCheck },
+    { href: '/admin', label: 'İlan Ekle / Tara', icon: PlusCircle },
   ];
 
+  const displayName = profile?.full_name || (isLoggedIn ? 'Kullanıcı' : 'Enes Güçlü');
+
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 bg-[#faf8f5] border-b border-[#ece7df] text-slate-800">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
-          {/* Logo & Slogan */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-700 to-slate-900 flex items-center justify-center text-white shadow-md shadow-sky-950/20 group-hover:scale-105 transition-transform">
-              <Building2 className="w-5 h-5 text-sky-300" />
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="w-9 h-9 rounded-xl bg-[#1b4332] text-white flex items-center justify-center font-black shadow-sm group-hover:scale-105 transition-transform">
+              <Building2 className="w-5 h-5 text-emerald-300" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 font-bold text-slate-900 text-lg leading-tight">
-                <span>Kamu İlan</span>
-                <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 tracking-wider border border-slate-200">Resmi İlanlar</span>
-              </div>
-              <p className="text-xs text-slate-500 font-medium hidden sm:block">Kamu Personeli ve Memur Alım Portalı</p>
+            <div className="flex items-center">
+              <span className="font-black text-xl text-[#1b4332] tracking-tight">kamu</span>
+              <span className="font-extrabold text-xl text-[#2d6a4f] tracking-tight">ilan</span>
             </div>
           </Link>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1.5 bg-[#f2eee9] p-1 rounded-full border border-[#e5dfd5]">
             {navLinks.map((link) => {
-              const Icon = link.icon;
               const isActive = pathname === link.href;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
                     isActive
-                      ? 'bg-sky-50 text-sky-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'bg-white text-[#1b4332] shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-sky-600' : 'text-slate-400'}`} />
-                  {link.label === 'İlan Ekle (AI)' ? 'İlan Ekle' : link.label}
+                  {link.label}
                 </Link>
               );
             })}
           </nav>
 
-          {/* Profile Status Pill & Auth */}
+          {/* Right Section: Notification & User Dropdown */}
           <div className="hidden md:flex items-center gap-3">
-            {hasProfileFilled && profile ? (
-              <Link
-                href="/profil"
-                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 border border-slate-300 transition-colors shadow-sm"
-                title="Kriterlerinizi Düzenleyin"
-              >
-                <GraduationCap className="w-4 h-4 text-sky-600" />
-                <span className="max-w-[130px] truncate">{profile.department || profile.education_level}</span>
-                {profile.kpss_score ? (
-                  <span className="px-1.5 py-0.5 rounded bg-white font-mono text-[11px] text-slate-900 border border-slate-200 font-bold">
-                    KPSS: {profile.kpss_score}
-                  </span>
-                ) : null}
-                {profile.ales_score ? (
-                  <span className="px-1.5 py-0.5 rounded bg-amber-100 font-mono text-[11px] text-amber-900 font-bold">
-                    ALES: {profile.ales_score}
-                  </span>
-                ) : null}
-              </Link>
-            ) : (
-              <Link
-                href="/profil"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white text-xs font-bold shadow-md shadow-sky-600/20 transition-all hover:scale-105"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>Kriterlerini Gir (İlanları Eşle)</span>
-              </Link>
-            )}
+            {/* Bildirim Çanı */}
+            <button
+              type="button"
+              className="relative p-2 rounded-full hover:bg-[#ece7df] text-slate-600 transition-colors"
+              title="Bildirimler"
+            >
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] font-black flex items-center justify-center">
+                19
+              </span>
+            </button>
 
-            {/* Auth Link */}
-            {isLoggedIn ? (
+            {/* Kullanıcı Menüsü */}
+            <div className="relative">
               <button
-                onClick={logout}
-                className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 px-2 py-1.5 transition-colors"
-                title="Hesaptan Çıkış Yap"
+                type="button"
+                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                className="flex items-center gap-2 py-1.5 px-3 rounded-full hover:bg-[#ece7df] text-xs font-bold text-slate-800 transition-colors border border-transparent hover:border-[#e5dfd5]"
               >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Çıkış</span>
+                <div className="w-7 h-7 rounded-full bg-[#2d6a4f] text-white flex items-center justify-center font-bold text-xs uppercase">
+                  {displayName.slice(0, 1)}
+                </div>
+                <span>{displayName}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
               </button>
-            ) : (
-              <Link
-                href="/giris"
-                className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-sky-600 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Giriş Yap</span>
-              </Link>
-            )}
+
+              {userDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 text-xs">
+                  <div className="px-4 py-2 border-b border-slate-100">
+                    <p className="font-bold text-slate-900">{displayName}</p>
+                    <p className="text-[11px] text-slate-500 truncate">{profile?.department || 'Bölüm Tanımsız'}</p>
+                  </div>
+                  <Link
+                    href="/profil"
+                    onClick={() => setUserDropdownOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 text-slate-700 font-semibold"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-sky-600" />
+                    Kriterlerimi Düzenle
+                  </Link>
+                  <Link
+                    href="/favoriler"
+                    onClick={() => setUserDropdownOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 text-slate-700 font-semibold"
+                  >
+                    <Heart className="w-3.5 h-3.5 text-rose-500" />
+                    Favori İlanlarım
+                  </Link>
+                  <div className="border-t border-slate-100 my-1" />
+                  {isLoggedIn ? (
+                    <button
+                      onClick={() => {
+                        logout();
+                        setUserDropdownOpen(false);
+                      }}
+                      className="flex items-center gap-2 w-full text-left px-4 py-2 hover:bg-rose-50 text-rose-600 font-semibold"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      Çıkış Yap
+                    </button>
+                  ) : (
+                    <Link
+                      href="/giris"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 text-slate-700 font-semibold"
+                    >
+                      <LogIn className="w-3.5 h-3.5 text-slate-500" />
+                      Giriş Yap / Kaydol
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Mobile Menu Toggle */}
           <div className="flex md:hidden items-center gap-2">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              className="p-2 rounded-lg text-slate-700 hover:bg-slate-200"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -134,41 +163,27 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-5 space-y-2">
-          {navLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold ${
-                  isActive ? 'bg-sky-50 text-sky-700' : 'text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <Icon className="w-5 h-5 text-sky-600" />
-                {link.label}
-              </Link>
-            );
-          })}
-          <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+        <div className="md:hidden border-t border-[#ece7df] bg-[#faf8f5] px-4 pt-3 pb-5 space-y-2">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-slate-700 hover:bg-[#ece7df]"
+            >
+              <link.icon className="w-4 h-4 text-[#2d6a4f]" />
+              {link.label}
+            </Link>
+          ))}
+          <div className="pt-2 border-t border-[#ece7df] flex flex-col gap-2">
             <Link
               href="/profil"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-sky-600 text-white text-xs font-bold shadow-sm"
+              className="w-full py-2.5 px-3 rounded-xl bg-[#1b4332] text-white text-xs font-bold text-center"
             >
-              <UserCheck className="w-4 h-4" />
-              {hasProfileFilled ? 'Kriterlerimi Düzenle' : 'Kriterlerimi Gir (Eşleştirmeyi Başlat)'}
-            </Link>
-            <Link
-              href="/giris"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-center w-full py-2 px-3 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold"
-            >
-              {isLoggedIn ? 'Hesabım / Çıkış' : 'Giriş Yap / Kayıt Ol'}
+              Kriterlerimi Düzenle ({displayName})
             </Link>
           </div>
         </div>
