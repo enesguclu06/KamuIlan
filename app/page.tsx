@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { 
   Search, 
   Filter, 
-  Sparkles, 
   CheckCircle2, 
   AlertCircle, 
   Calendar, 
@@ -20,7 +19,10 @@ import {
   XCircle,
   FileText,
   SlidersHorizontal,
-  ArrowRight
+  ArrowRight,
+  ShieldCheck,
+  Award,
+  LogIn
 } from 'lucide-react';
 import { Announcement, Position, MatchStatus } from '@/types';
 import { SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
@@ -29,7 +31,7 @@ import { useUserProfile } from '@/lib/context/user-profile-context';
 import { computeAnnouncementMatch } from '@/lib/matcher';
 
 export default function HomePage() {
-  const { profile, hasProfileFilled } = useUserProfile();
+  const { profile, hasProfileFilled, isLoggedIn } = useUserProfile();
   const [announcements, setAnnouncements] = useState<Announcement[]>(SAMPLE_ANNOUNCEMENTS);
   const [loading, setLoading] = useState(false);
 
@@ -88,9 +90,11 @@ export default function HomePage() {
   // Sekme ve Arama Filtrelemesi
   const filteredList = useMemo(() => {
     return evaluatedAnnouncements.filter((item) => {
-      // 1. Sekme Filtresi
-      if (activeTab === 'SUITABLE' && item.matchSummary.suitableCount === 0) return false;
-      if (activeTab === 'MAYBE' && (item.matchSummary.maybeCount === 0 || item.matchSummary.suitableCount > 0)) return false;
+      // 1. Sekme Filtresi (Sadece kriter girildiyse uygulanır)
+      if (hasProfileFilled) {
+        if (activeTab === 'SUITABLE' && item.matchSummary.suitableCount === 0) return false;
+        if (activeTab === 'MAYBE' && (item.matchSummary.maybeCount === 0 || item.matchSummary.suitableCount > 0)) return false;
+      }
       if (activeTab === 'EXPIRING' && (item.daysLeft > 7 || item.daysLeft < 0)) return false;
 
       // 2. Metin Arama Filtresi (Kurum, Başlık veya Kadro Ünvanı)
@@ -118,7 +122,7 @@ export default function HomePage() {
 
       return true;
     });
-  }, [evaluatedAnnouncements, activeTab, searchQuery, selectedCity, selectedEduLevel]);
+  }, [evaluatedAnnouncements, activeTab, searchQuery, selectedCity, selectedEduLevel, hasProfileFilled]);
 
   // Toplam uygun kadro sayısı
   const totalSuitablePositions = useMemo(() => {
@@ -128,25 +132,25 @@ export default function HomePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
-      {/* 1. ÜST HERO / HOŞGELDİNİZ BANNERI */}
+      {/* 1. ÜST HERO / HOŞ GELDİNİZ VE TANITIM ALANI */}
       {hasProfileFilled && profile ? (
-        // Kullanıcı Profilini Doldurmuşsa: Kişiselleştirilmiş Özet
+        // A) Profilini Doldurmuş Kullanıcı İçin: Kişiselleştirilmiş İlan Paneli
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl border border-slate-800">
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
             <div className="lg:col-span-2 space-y-3">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-400/30">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Kriterlerinize Göre Canlı Eşleştirme Aktif</span>
+                <span>Kriterlerinize Göre Canlı Filtreleme Aktif</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
                 {profile.department || profile.education_level} İçin Açılan Kamu İlanları
               </h1>
               <p className="text-slate-300 text-sm max-w-2xl leading-relaxed">
-                KPSS {profile.kpss_score ? `(${profile.kpss_score})` : ''} {profile.ales_score ? `| ALES: ${profile.ales_score}` : ''} {profile.yds_score ? `| Dil: ${profile.yds_score}` : ''} puanlarınıza ve yaşınıza göre şartlarını tam karşıladığınız kadrolar aşağıda yeşil rozetle işaretlenmiştir.
+                KPSS {profile.kpss_score ? `(${profile.kpss_score})` : ''} {profile.ales_score ? `| ALES: ${profile.ales_score}` : ''} {profile.yds_score ? `| Dil: ${profile.yds_score}` : ''} puanlarınıza ve mezuniyet şartlarınıza uyan pozisyonlar aşağıda yeşil rozetle işaretlendi.
               </p>
             </div>
 
-            {/* Profil Durum Kartı */}
+            {/* Profil Bilgi Kartı */}
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10 space-y-3">
               <div className="flex items-center justify-between text-xs text-slate-300">
                 <span>Kayıtlı Kriterleriniz</span>
@@ -182,37 +186,83 @@ export default function HomePage() {
           </div>
         </div>
       ) : (
-        // Yeni Ziyaretçi: Kriter Girişi Çağrısı
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-sky-900 via-indigo-900 to-slate-900 text-white p-6 sm:p-8 shadow-xl border border-sky-800">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-            <div className="md:col-span-8 space-y-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/20 text-sky-200 text-xs font-semibold border border-sky-400/30">
-                <Building2 className="w-3.5 h-3.5 text-sky-300" />
+        // B) Normal Ziyaretçi İçin: Kurumsal Tanıtım ve Karşılama Ekranı
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-sky-950 to-slate-900 text-white p-6 sm:p-10 shadow-xl border border-slate-800 space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            
+            <div className="lg:col-span-8 space-y-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 text-xs font-bold border border-sky-400/30">
+                <Building2 className="w-3.5 h-3.5" />
                 <span>Resmî Gazete ve Kariyer Kapısı Alımları</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-                Kriterlerinize Uygun Kamu İlanlarını Keşfedin
+              <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
+                Türkiye'deki Tüm Kamu Personeli ve Memur Alım İlanları
               </h1>
-              <p className="text-slate-200 text-sm max-w-2xl leading-relaxed">
-                Bölümünüzü, KPSS/ALES puanınızı ve mezuniyet durumunuzu 1 dakikada girin. Yüzlerce sayfalık Resmî Gazete metinlerini okumak yerine yalnızca <strong>başvurabileceğiniz kadroları</strong> görün!
+              <p className="text-slate-300 text-sm sm:text-base max-w-2xl leading-relaxed">
+                Bakanlıklar, üniversiteler ve kamu kurumlarının yayımladığı tüm personel alımlarını tek ekrandan inceleyin. Kendi bölümünüzü, KPSS ve ALES puanınızı girerek sadece <strong>başvurabileceğiniz kadroları</strong> görün!
               </p>
+
+              {/* Hızlı Eylem Butonları */}
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/profil"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold shadow-lg shadow-sky-600/30 transition-all hover:scale-105"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  <span>Kriterlerini Gir ve Sana Uyanları Gör</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+
+                {!isLoggedIn && (
+                  <Link
+                    href="/giris"
+                    className="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-semibold border border-white/20 transition-colors"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>Giriş Yap / Üye Ol</span>
+                  </Link>
+                )}
+              </div>
             </div>
 
-            <div className="md:col-span-4 flex flex-col justify-center">
-              <Link
-                href="/profil"
-                className="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-white text-slate-900 hover:bg-sky-50 text-sm font-extrabold shadow-lg transition-all hover:scale-105"
-              >
-                <SlidersHorizontal className="w-4 h-4 text-sky-600" />
-                <span>Kriterlerini Gir ve Başla</span>
-                <ArrowRight className="w-4 h-4 text-slate-500" />
-              </Link>
+            {/* 3 Temel Avantaj Kutusu */}
+            <div className="lg:col-span-4 grid grid-cols-1 gap-3">
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                <div className="flex items-center gap-2 text-sky-400 font-bold text-xs uppercase">
+                  <Clock className="w-4 h-4" />
+                  <span>Günlük Otomatik Tarama</span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  Resmî Gazete "Çeşitli İlanlar" bölümü her gün taranır, yeni ilanlar sisteme anında eklenir.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Bölüm ve KPSS Eşleştirmesi</span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  Mezuniyet bölümünüz, KPSS/ALES puanınız ve yaş sınırınız kadrolarla otomatik kıyaslanır.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase">
+                  <Building2 className="w-4 h-4" />
+                  <span>Doğrudan Başvuru Ekranı</span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  Kariyer Kapısı ve e-Devlet resmi başvuru sayfalarına doğrudan tek tıkla yönlendirilirsiniz.
+                </p>
+              </div>
             </div>
+
           </div>
         </div>
       )}
 
-      {/* 2. HIZLI FİLTRE SEKMELERİ */}
+      {/* 2. HIZLI FİLTRELEME SEKMELERİ */}
       <div className="flex flex-wrap gap-2 sm:gap-3 items-center border-b border-slate-200 pb-4">
         <button
           onClick={() => setActiveTab('ALL')}
@@ -278,13 +328,13 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* 3. ARAMA VE FİLTRE ÇUBUĞU */}
+      {/* 3. ARAMA VE ŞEHİR/EĞİTİM FİLTRE ÇUBUĞU */}
       <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div className="sm:col-span-6 relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
           <input
             type="text"
-            placeholder="Kurum adı (Bakanlık, Üniversite), unvan (Mühendis, Avukat, Büro Personeli)..."
+            placeholder="Kurum adı (Bakanlık, Üniversite, Belediye), unvan (Mühendis, Avukat, Katip)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
@@ -353,6 +403,7 @@ export default function HomePage() {
             let badgeComponent = null;
 
             if (hasProfileFilled) {
+              // Profil doldurulmuşsa yeşil/sarı/kırmızı göster
               if (matchSummary.suitableCount > 0) {
                 borderStyle = 'border-emerald-200 hover:border-emerald-300 bg-gradient-to-r from-emerald-50/30 to-white';
                 badgeComponent = (
@@ -377,6 +428,16 @@ export default function HomePage() {
                   </div>
                 );
               }
+            } else {
+              // Misafir Kullanıcı: Nötr kurumsal kadro özeti göster (ASLA profil uymuyor veya sana uygun deme)
+              badgeComponent = (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200">
+                  <GraduationCap className="w-3.5 h-3.5 text-sky-600" />
+                  <span>
+                    {positions[0]?.education_level || 'Kamu Kadrosu'} {positions[0]?.kpss_type !== 'KPSS_YOK' ? `• ${positions[0]?.kpss_type} ≥ ${positions[0]?.min_kpss_score}` : '• KPSS Şartsız'}
+                  </span>
+                </div>
+              );
             }
 
             // Geri Sayım Rozeti
@@ -409,7 +470,7 @@ export default function HomePage() {
                 key={announcement.id}
                 className={`p-5 rounded-2xl bg-white border ${borderStyle} shadow-sm hover:shadow-md transition-all space-y-4`}
               >
-                {/* Üst Bar: Kurum, Tarih ve Uyumluluk Rozeti */}
+                {/* Üst Bar: Kurum, Tarih ve Rozet */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs uppercase border border-slate-200">
@@ -480,7 +541,7 @@ export default function HomePage() {
                     href={`/ilan/${announcement.id}`}
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-sky-600 text-white text-xs font-bold transition-all shadow-sm"
                   >
-                    <span>Şart Karşılaştırmasını Gör</span>
+                    <span>Şartları ve Kadroları İncele</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>

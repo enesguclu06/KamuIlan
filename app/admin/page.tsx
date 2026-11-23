@@ -23,8 +23,28 @@ export default function AdminPage() {
   const [sourceUrl, setSourceUrl] = useState('');
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [scraping, setScraping] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  const handleScrapeNow = async () => {
+    setScraping(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const res = await fetch('/api/admin/scrape', { method: 'POST' });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setSuccessMsg(json.message);
+      } else {
+        setErrorMsg(json.error || 'Tarama sırasında hata oluştu.');
+      }
+    } catch (e: any) {
+      setErrorMsg('Bağlantı hatası: ' + e.message);
+    } finally {
+      setScraping(false);
+    }
+  };
   
   // Ayrıştırılan sonuç
   const [parsedData, setParsedData] = useState<{
@@ -138,6 +158,27 @@ BAŞVURU ŞARTLARI:
         <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
           Resmî Gazete veya kurum web sitesinden kopyaladığınız metni yapıştırarak şartları, unvanları ve kontenjanları otomatik olarak sisteme ekleyin.
         </p>
+      </div>
+
+      {/* Hızlı Canlı Tarama Kutusu */}
+      <div className="bg-sky-50 border border-sky-200 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-bold text-sky-950 flex items-center gap-2">
+            <Database className="w-4 h-4 text-sky-600" />
+            <span>Güncel Resmî Gazete İlanlarını Hemen Çek</span>
+          </h3>
+          <p className="text-xs text-sky-800 mt-1">
+            GitHub Actions'ı beklemeden güncel Resmî Gazete ve bakanlık ilanlarını tek tıkla veritabanınıza yükler.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleScrapeNow}
+          disabled={scraping}
+          className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all shadow-md shadow-sky-600/20 disabled:opacity-50 flex-shrink-0"
+        >
+          {scraping ? 'Taranıyor ve Yükleniyor...' : 'İlanları Şimdi Tara ve Kaydet'}
+        </button>
       </div>
 
       {errorMsg && (
