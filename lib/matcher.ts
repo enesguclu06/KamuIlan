@@ -71,9 +71,10 @@ export function extractCoreKeywords(deptName: string): string[] {
 export function checkDepartmentMatch(
   userDepartment?: string,
   allowedDepartments: string[] = [],
-  isAnyDepartment: boolean = false
+  isAnyDepartment?: boolean | null
 ): boolean {
-  if (isAnyDepartment) return true;
+  // isAnyDepartment null/undefined gelirse false kabul et
+  if (isAnyDepartment === true) return true;
   if (!allowedDepartments || allowedDepartments.length === 0) return true;
   if (!userDepartment) return false;
 
@@ -84,10 +85,17 @@ export function checkDepartmentMatch(
     const allowedCore = extractCoreKeywords(dept);
     if (allowedCore.length === 0) continue;
 
-    // Adayın bölümünün ana disiplini (örn: "bilgisayar", "yazilim", "ziraat", "hukuk")
-    // İlandaki ana disiplinle eşleşiyor mu?
-    const hasCoreMatch = userCore.some(uk => 
-      allowedCore.some(ak => ak === uk || (uk.length >= 4 && ak.startsWith(uk)) || (ak.length >= 4 && uk.startsWith(ak)))
+    // Kullanıcının bölüm ana disipliniyle ilan bölümleri tam çakışıyor mu?
+    // Kısmen örtüşme YETERLİ DEĞİL — her iki taraf da aynı ana kelimeyi paylaşmalı
+    const hasCoreMatch = userCore.some(uk =>
+      allowedCore.some(ak => {
+        // Tam eşitlik (örn: "bilgisayar" === "bilgisayar")
+        if (ak === uk) return true;
+        // Biri diğerinin prefix'i ve yeterince uzun (örn: "bilgisay" → "bilgisayar")
+        if (uk.length >= 5 && ak.startsWith(uk)) return true;
+        if (ak.length >= 5 && uk.startsWith(ak)) return true;
+        return false;
+      })
     );
 
     if (hasCoreMatch) {
@@ -152,8 +160,8 @@ export function evaluateMatch(
   // 2. BÖLÜM
   const deptMatch = checkDepartmentMatch(
     user.department,
-    position.allowed_departments,
-    position.is_any_department
+    position.allowed_departments ?? [],
+    position.is_any_department ?? false
   );
   if (!deptMatch) {
     isUnfit = true;

@@ -114,10 +114,21 @@ export default function HomePage() {
           .order('deadline', { ascending: true });
 
         if (annData && annData.length > 0 && !annError) {
-          // Supabase'den gelen gerçek ilanlarla örnek veriyi birleştir
-          const combined = [...annData, ...SAMPLE_ANNOUNCEMENTS.filter(s => !annData.some((a: any) => a.source_url === s.source_url))];
-          setAnnouncements(combined as Announcement[]);
+          // Supabase'den gerçek veri gelirse sadece onu kullan
+          // positions verisinde is_any_department null olabilir, false'a normalize et
+          const normalized = annData.map((a: any) => ({
+            ...a,
+            positions: (a.positions || []).map((p: any) => ({
+              ...p,
+              is_any_department: p.is_any_department ?? false,
+              allowed_departments: p.allowed_departments ?? [],
+              special_conditions: p.special_conditions ?? [],
+              cities: p.cities ?? [],
+            })),
+          }));
+          setAnnouncements(normalized as Announcement[]);
         }
+        // Supabase boş gelirse SAMPLE_ANNOUNCEMENTS zaten başlangıç state'i olarak set edildi
       } catch (e) {
         console.warn('Canlı ilan verisi çekilirken hata oluştu, zengin veri gösteriliyor:', e);
       } finally {
