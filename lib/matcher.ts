@@ -22,12 +22,18 @@ export function normalizeTurkish(text: string): string {
   if (!text) return '';
   return text
     .replace(/İ/g, 'i')
-    .replace(/I/g, 'ı')
-    .replace(/Ş/g, 'ş')
-    .replace(/Ğ/g, 'ğ')
-    .replace(/Ü/g, 'ü')
-    .replace(/Ö/g, 'ö')
-    .replace(/Ç/g, 'ç')
+    .replace(/I/g, 'i')
+    .replace(/ı/g, 'i')
+    .replace(/Ş/g, 's')
+    .replace(/ş/g, 's')
+    .replace(/Ğ/g, 'g')
+    .replace(/ğ/g, 'g')
+    .replace(/Ü/g, 'u')
+    .replace(/ü/g, 'u')
+    .replace(/Ö/g, 'o')
+    .replace(/ö/g, 'o')
+    .replace(/Ç/g, 'c')
+    .replace(/ç/g, 'c')
     .toLowerCase()
     .trim();
 }
@@ -50,13 +56,18 @@ export function calculateAge(birthDateStr?: string): number | null {
 
 const GENERIC_DEPT_WORDS = new Set([
   'muhendisligi', 'muhendisi', 'muhendis',
+  'mühendisliği', 'mühendisi', 'mühendis',
   'ogretmenligi', 'ogretmeni', 'ogretmen',
+  'öğretmenliği', 'öğretmeni', 'öğretmen',
   'teknikerligi', 'teknikeri', 'tekniker',
   'teknisyenligi', 'teknisyeni', 'teknisyen',
   'uzmanligi', 'uzmani', 'uzman',
+  'uzmanlığı', 'uzmanı',
   'hekimligi', 'hekim', 'doktorlugu',
-  'bolumu', 'programi', 'fakultesi', 'anabilim', 'dali', 'yuksekokulu',
-  'lisans', 'onlisans', 've', 'ile', 'veya', 've/veya'
+  'hekimliği', 'doktorluğu',
+  'bolumu', 'bölümü', 'programi', 'programı', 'fakultesi', 'fakültesi',
+  'anabilim', 'dali', 'dalı', 'yuksekokulu', 'yüksekokulu',
+  'lisans', 'onlisans', 'önlisans', 've', 'ile', 'veya', 've/veya'
 ]);
 
 export function extractCoreKeywords(deptName: string): string[] {
