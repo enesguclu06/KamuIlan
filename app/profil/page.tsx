@@ -177,6 +177,55 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* Hızlı Enes Güçlü Bilgilerini Yükleme Kartı */}
+        <div className="bg-white border border-emerald-300 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-[#1b4332] flex items-center justify-center flex-shrink-0 font-black">
+              <Sparkles className="w-5 h-5 text-emerald-700" />
+            </div>
+            <div>
+              <p className="font-bold text-[#1b4332] text-sm flex items-center gap-2">
+                <span>Örnek Aday Bilgilerini Yükle: Enes Güçlü</span>
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">1-Tık</span>
+              </p>
+              <p className="text-slate-600 text-xs mt-0.5">
+                Bilgisayar Mühendisliği (Lisans) • 76.5 KPSSP3 • Erkek (178 cm, 75 kg)
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              const enesProfile: UserProfile = {
+                ...formData,
+                full_name: 'Enes Güçlü',
+                education_level: 'LISANS',
+                department: 'Bilgisayar Mühendisliği',
+                graduation_status: 'MEZUN',
+                kpss_type: 'KPSSP3',
+                kpss_score: 76.5,
+                height: 178,
+                weight: 75,
+                gender: 'ERKEK',
+                birth_date: '2000-01-01',
+                military_status: 'MUAFIYET',
+              };
+              setFormData(enesProfile);
+              setDepartmentSearch('Bilgisayar Mühendisliği');
+              await updateProfile(enesProfile);
+              setSavedSuccess(true);
+              setTimeout(() => {
+                setSavedSuccess(false);
+                router.push('/');
+              }, 900);
+            }}
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#2d6a4f] text-white font-bold transition-all shadow-sm flex items-center justify-center gap-2 whitespace-nowrap"
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+            <span>Bu Kriterleri Doldur & Kaydet</span>
+          </button>
+        </div>
+
         <form onSubmit={handleSave} className="space-y-6">
           
           {/* 1. EĞİTİM VE BÖLÜM BİLGİLERİ (EN KRİTİK ALAN) */}

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   Search, 
   Filter, 
@@ -29,7 +30,8 @@ import {
   ChevronDown,
   Info,
   Lock,
-  AlertTriangle
+  AlertTriangle,
+  UserCheck
 } from 'lucide-react';
 import { Announcement, Position, MatchStatus } from '@/types';
 import { SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
@@ -61,6 +63,7 @@ const CITY_COUNTS: Record<string, number> = {
 };
 
 export default function HomePage() {
+  const router = useRouter();
   const { profile, hasProfileFilled, isLoggedIn } = useUserProfile();
   const [announcements, setAnnouncements] = useState<Announcement[]>(SAMPLE_ANNOUNCEMENTS);
   const [loading, setLoading] = useState(false);
@@ -496,8 +499,7 @@ export default function HomePage() {
                   type="button"
                   onClick={() => {
                     if (!hasProfileFilled) {
-                      alert('Lütfen önce profilinizdeki bölüm ve sınav puanı kriterlerinizi kaydedin.');
-                      window.location.href = '/profil';
+                      router.push('/profil');
                       return;
                     }
                     setEligibilityFilter(eligibilityFilter === 'SUITABLE' ? 'ALL' : 'SUITABLE');
@@ -515,7 +517,7 @@ export default function HomePage() {
                   <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
                     eligibilityFilter === 'SUITABLE' ? 'bg-white/20 text-white' : 'bg-white text-[#1b4332]'
                   }`}>
-                    {hasProfileFilled ? `${suitableAnnouncementsCount} İlan` : 'Giriş Yap'}
+                    {hasProfileFilled ? `${suitableAnnouncementsCount} İlan` : 'Kriter Belirle'}
                   </span>
                 </button>
 
@@ -523,8 +525,7 @@ export default function HomePage() {
                   type="button"
                   onClick={() => {
                     if (!hasProfileFilled) {
-                      alert('Lütfen önce profilinizdeki bölüm ve sınav puanı kriterlerinizi kaydedin.');
-                      window.location.href = '/profil';
+                      router.push('/profil');
                       return;
                     }
                     setEligibilityFilter(eligibilityFilter === 'MAYBE' ? 'ALL' : 'MAYBE');
@@ -542,7 +543,7 @@ export default function HomePage() {
                   <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
                     eligibilityFilter === 'MAYBE' ? 'bg-white/20 text-white' : 'bg-white text-amber-900'
                   }`}>
-                    {hasProfileFilled ? `${maybeAnnouncementsCount} İlan` : 'Giriş Yap'}
+                    {hasProfileFilled ? `${maybeAnnouncementsCount} İlan` : 'Kriter Belirle'}
                   </span>
                 </button>
 
@@ -742,6 +743,31 @@ export default function HomePage() {
                 </select>
               </div>
             </div>
+
+            {/* Henüz Kriter Girmemiş Adaylar İçin Bilgilendirme Bannerı */}
+            {!hasProfileFilled && (
+              <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#1b4332] text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <Sparkles className="w-5 h-5 text-emerald-300" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-[#1b4332] text-sm">Size Özel İlanları Otomatik Filtreleyin</p>
+                    <p className="text-slate-600 text-xs mt-0.5">
+                      Mezuniyet ve KPSS bilgilerinizi tanımlayarak binlerce kamu kadrosu arasından şartlarını sağladıklarınızı tek tıkla listeleyin.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/profil"
+                  className="px-4 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#2d6a4f] text-white font-bold transition-all shadow-sm flex items-center gap-1.5 whitespace-nowrap"
+                >
+                  <UserCheck className="w-4 h-4 text-emerald-300" />
+                  <span>Kriterlerimi Belirle</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            )}
 
             {/* İLAN KARTLARI (MEMURYOLU BİREBİR KART YAPISI) */}
             {filteredList.length === 0 ? (
