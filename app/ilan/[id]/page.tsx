@@ -20,7 +20,8 @@ import {
   FileCheck2,
   Share2,
   ChevronDown,
-  Info
+  Info,
+  Heart
 } from 'lucide-react';
 import { Announcement, Position, MatchEvaluation } from '@/types';
 import { SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
@@ -31,8 +32,9 @@ import { evaluateMatch } from '@/lib/matcher';
 export default function AnnouncementDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { profile } = useUserProfile();
+  const { profile, favorites, toggleFavorite, isFavorite } = useUserProfile();
   const id = params?.id as string;
+  const isFav = isFavorite(id);
 
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,13 +139,29 @@ export default function AnnouncementDetailPage() {
           <ArrowLeft className="w-4 h-4" />
           Tüm İlanlara Dön
         </Link>
-        <button
-          onClick={handleShare}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
-        >
-          <Share2 className="w-3.5 h-3.5" />
-          <span>{copied ? 'Link Kopyalandı!' : 'İlanı Paylaş'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Favori Butonu */}
+          <button
+            type="button"
+            onClick={() => toggleFavorite(id)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
+              isFav
+                ? 'bg-rose-50 text-rose-600 border-rose-200'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+            }`}
+          >
+            <Heart className={`w-3.5 h-3.5 ${isFav ? 'fill-rose-600 text-rose-600' : 'text-slate-500'}`} />
+            <span>{isFav ? 'Favorilerinizde' : 'Favorilere Ekle'}</span>
+          </button>
+
+          <button
+            onClick={handleShare}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>{copied ? 'Link Kopyalandı!' : 'İlanı Paylaş'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Ana Başlık & Kurum Kartı */}

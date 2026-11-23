@@ -14,10 +14,15 @@ interface UserProfileContextType {
   userEmail: string | null;
   loginLocal: (email: string, fullName?: string, defaultCriteria?: Partial<UserProfile>) => Promise<void>;
   logout: () => Promise<void>;
+  favorites: string[];
+  toggleFavorite: (id: string) => void;
+  isFavorite: (id: string) => boolean;
+  clearFavorites: () => void;
 }
 
 const STORAGE_KEY = 'kamu_ilan_user_profile_v2';
 const AUTH_KEY = 'kamu_ilan_auth_session';
+const FAVS_KEY = 'kamu_ilan_favs';
 
 const UserProfileContext = createContext<UserProfileContextType | undefined>(undefined);
 
@@ -26,6 +31,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [favorites, setFavorites] = useState<string[]>([]);
 
   useEffect(() => {
     async function loadInitialProfile() {
@@ -88,6 +94,20 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       } catch {
         setProfile(null);
       }
+
+      // 4. Favoriler Depolama (LocalStorage)
+      try {
+        const storedFavs = localStorage.getItem(FAVS_KEY);
+        if (storedFavs) {
+          const parsedFavs = JSON.parse(storedFavs);
+          if (Array.isArray(parsedFavs)) {
+            setFavorites(parsedFavs);
+          }
+        }
+      } catch (e) {
+        console.warn('Favoriler okuma hatası:', e);
+      }
+
       setIsLoading(false);
     }
 
@@ -168,6 +188,27 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     setUserEmail(null);
   };
 
+  const toggleFavorite = (id: string) => {
+    setFavorites((prev) => {
+      const next = prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id];
+      try {
+        localStorage.setItem(FAVS_KEY, JSON.stringify(next));
+      } catch (e) {
+        console.warn('Favoriler kaydedilemedi:', e);
+      }
+      return next;
+    });
+  };
+
+  const isFavorite = (id: string) => favorites.includes(id);
+
+  const clearFavorites = () => {
+    setFavorites([]);
+    try {
+      localStorage.removeItem(FAVS_KEY);
+    } catch {}
+  };
+
   const hasProfileFilled = Boolean(
     profile && (profile.department || profile.kpss_score || profile.education_level)
   );
@@ -184,6 +225,10 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         userEmail,
         loginLocal,
         logout,
+        favorites,
+        toggleFavorite,
+        isFavorite,
+        clearFavorites,
       }}
     >
       {children}

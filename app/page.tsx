@@ -64,7 +64,7 @@ const CITY_COUNTS: Record<string, number> = {
 
 export default function HomePage() {
   const router = useRouter();
-  const { profile, hasProfileFilled, isLoggedIn } = useUserProfile();
+  const { profile, hasProfileFilled, isLoggedIn, favorites, toggleFavorite } = useUserProfile();
   const [announcements, setAnnouncements] = useState<Announcement[]>(SAMPLE_ANNOUNCEMENTS);
   const [loading, setLoading] = useState(false);
 
@@ -78,31 +78,9 @@ export default function HomePage() {
   type EligibilityFilter = 'ALL' | 'SUITABLE' | 'MAYBE';
   const [eligibilityFilter, setEligibilityFilter] = useState<EligibilityFilter>('ALL');
   const [onlyUpcoming, setOnlyUpcoming] = useState(false);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [sortOption, setSortOption] = useState<'DEADLINE' | 'NEWEST' | 'QUOTA'>('DEADLINE');
   const [activeStatTab, setActiveStatTab] = useState<'ANNOUNCEMENTS' | 'POSITIONS' | 'INSTITUTIONS'>('ANNOUNCEMENTS');
-
-  // Favoriler (LocalStorage)
-  const [favorites, setFavorites] = useState<string[]>([]);
-
-  useEffect(() => {
-    try {
-      const favs = localStorage.getItem('kamu_ilan_favs');
-      if (favs) setFavorites(JSON.parse(favs));
-    } catch {}
-  }, []);
-
-  const toggleFavorite = (id: string) => {
-    let next: string[];
-    if (favorites.includes(id)) {
-      next = favorites.filter(f => f !== id);
-    } else {
-      next = [...favorites, id];
-    }
-    setFavorites(next);
-    try {
-      localStorage.setItem('kamu_ilan_favs', JSON.stringify(next));
-    } catch {}
-  };
 
   // Supabase'den canlı ilanları çekme ve örnek verilerle güvenli birleştirme
   useEffect(() => {
@@ -180,7 +158,12 @@ export default function HomePage() {
   // Filtreleme Mantığı
   const filteredList = useMemo(() => {
     let list = evaluatedAnnouncements.filter((item) => {
-      // 0. Gelecek Tarihli İlanlar Filtresi
+      // 0. Favoriler Filtresi
+      if (onlyFavorites && !favorites.includes(item.id)) {
+        return false;
+      }
+
+      // 0.1 Gelecek Tarihli İlanlar Filtresi
       if (onlyUpcoming && !item.isUpcoming) {
         return false;
       }
@@ -246,7 +229,7 @@ export default function HomePage() {
     }
 
     return list;
-  }, [evaluatedAnnouncements, onlyUpcoming, eligibilityFilter, hasProfileFilled, searchQuery, selectedCities, selectedEduLevel, selectedExamType, sortOption]);
+  }, [evaluatedAnnouncements, onlyFavorites, favorites, onlyUpcoming, eligibilityFilter, hasProfileFilled, searchQuery, selectedCities, selectedEduLevel, selectedExamType, sortOption]);
 
   const totalPositionsCount = useMemo(() => {
     return announcements.reduce((sum, a) => sum + (a.positions || []).reduce((s, p) => s + p.quota, 0), 0);
@@ -414,6 +397,21 @@ export default function HomePage() {
             <span className="font-bold text-emerald-700 font-mono">{newAnnouncementsCount}</span>
           </div>
 
+          {/* Favorilerim Quick Pill */}
+          <button
+            type="button"
+            onClick={() => setOnlyFavorites(!onlyFavorites)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              onlyFavorites
+                ? 'bg-rose-600 text-white shadow-sm'
+                : 'bg-white border border-[#e5dfd5] text-slate-700 hover:bg-rose-50'
+            }`}
+          >
+            <Heart className={`w-3.5 h-3.5 ${onlyFavorites ? 'fill-white text-white' : 'text-rose-500 fill-rose-500'}`} />
+            <span className={onlyFavorites ? 'text-rose-100 font-bold' : 'text-slate-400 font-bold'}>FAVORİLERİM:</span>
+            <span className={`font-bold font-mono ${onlyFavorites ? 'text-white' : 'text-rose-600'}`}>{favorites.length}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setOnlyUpcoming(!onlyUpcoming)}
@@ -565,6 +563,27 @@ export default function HomePage() {
                     onlyUpcoming ? 'bg-white/20 text-white' : 'bg-white text-blue-900'
                   }`}>
                     {upcomingAnnouncementsCount} İlan
+                  </span>
+                </button>
+
+                {/* Favoriler Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setOnlyFavorites(!onlyFavorites)}
+                  className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
+                    onlyFavorites
+                      ? 'bg-rose-600 text-white shadow-md'
+                      : 'bg-rose-50/70 hover:bg-rose-100/70 text-rose-900 border border-rose-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Heart className={`w-3.5 h-3.5 ${onlyFavorites ? 'text-white fill-white' : 'text-rose-600 fill-rose-600'}`} />
+                    <span>Favori İlanlarım</span>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                    onlyFavorites ? 'bg-white/20 text-white' : 'bg-white text-rose-900'
+                  }`}>
+                    {favorites.length} İlan
                   </span>
                 </button>
               </div>

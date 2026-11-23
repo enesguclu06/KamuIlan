@@ -24,7 +24,7 @@ import { useUserProfile } from '@/lib/context/user-profile-context';
 
 export function Navbar() {
   const pathname = usePathname();
-  const { profile, hasProfileFilled, isLoggedIn, userEmail, logout } = useUserProfile();
+  const { profile, hasProfileFilled, isLoggedIn, userEmail, logout, favorites } = useUserProfile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
@@ -79,8 +79,22 @@ export function Navbar() {
             })}
           </nav>
 
-          {/* Right Section: Notification & User Dropdown */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* Right Section: Notification, Favorites & User Dropdown */}
+          <div className="hidden md:flex items-center gap-2">
+            {/* Favoriler Butonu */}
+            <Link
+              href="/favoriler"
+              className="relative p-2 rounded-full hover:bg-[#ece7df] text-slate-600 transition-colors"
+              title="Favori İlanlarım"
+            >
+              <Heart className={`w-5 h-5 ${favorites.length > 0 ? 'fill-rose-500 text-rose-500' : 'text-slate-600'}`} />
+              {favorites.length > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
+                  {favorites.length}
+                </span>
+              )}
+            </Link>
+
             {/* Bildirim Çanı */}
             <button
               type="button"
@@ -132,10 +146,17 @@ export function Navbar() {
                     <Link
                       href="/favoriler"
                       onClick={() => setUserDropdownOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 text-slate-700 font-semibold"
+                      className="flex items-center justify-between px-4 py-2 hover:bg-slate-50 text-slate-700 font-semibold"
                     >
-                      <Heart className="w-3.5 h-3.5 text-rose-500" />
-                      Favori İlanlarım
+                      <div className="flex items-center gap-2">
+                        <Heart className="w-3.5 h-3.5 text-rose-500" />
+                        <span>Favori İlanlarım</span>
+                      </div>
+                      {favorites.length > 0 && (
+                        <span className="text-[10px] bg-rose-100 text-rose-700 font-mono font-bold px-1.5 py-0.5 rounded-full">
+                          {favorites.length}
+                        </span>
+                      )}
                     </Link>
                     <div className="border-t border-slate-100 my-1" />
                     <Link
@@ -219,6 +240,19 @@ export function Navbar() {
             </Link>
           ))}
           <div className="pt-2 border-t border-[#ece7df] flex flex-col gap-2">
+            <Link
+              href="/favoriler"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-rose-50/70 border border-rose-200"
+            >
+              <div className="flex items-center gap-2">
+                <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
+                <span>Favori İlanlarım</span>
+              </div>
+              <span className="text-[10px] bg-rose-200 text-rose-800 font-mono px-2 py-0.5 rounded-full">
+                {favorites.length}
+              </span>
+            </Link>
             {isUserActive ? (
               <>
                 <Link
