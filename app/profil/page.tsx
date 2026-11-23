@@ -138,423 +138,425 @@ export default function ProfilePage() {
   }, [formData]);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      
-      {/* Başlık Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl space-y-3">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 text-xs font-semibold border border-sky-400/30">
-          <GraduationCap className="w-3.5 h-3.5 text-sky-300" />
-          <span>Aday Bilgi ve Tercih Merkezi</span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-black">
-          Kriterlerinizi Belirleyin, Size Uyan İlanları Anında Görün
-        </h1>
-        <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-          Bölümünüzü, mezuniyet durumunuzu, KPSS, ALES ve YDS puanlarınızı girin. Sistem tüm kamu kadrolarını analiz edip şartlarını sağladığınız ilanları yeşil rozetle öne çıkarsın.
-        </p>
+    <div className="bg-[#faf8f5] min-h-screen py-8 text-slate-800">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        
+        {/* Başlık Banner (Memuryolu Forest Green) */}
+        <div className="bg-[#1b4332] rounded-3xl p-6 sm:p-8 text-white shadow-md space-y-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-emerald-200 text-xs font-semibold border border-white/20">
+            <GraduationCap className="w-3.5 h-3.5 text-emerald-300" />
+            <span>Aday Bilgi ve Tercih Merkezi</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+            Kriterlerinizi Belirleyin, Size Uyan İlanları Anında Görün
+          </h1>
+          <p className="text-sm text-emerald-100/80 max-w-2xl leading-relaxed">
+            Bölümünüzü, mezuniyet durumunuzu, KPSS, ALES ve YDS puanlarınızı girin. Sistem tüm kamu kadrolarını analiz edip şartlarını sağladığınız ilanları yeşil rozetle öne çıkarsın.
+          </p>
 
-        {/* Canlı Eşleşme Bildirimi */}
-        {formData.department && (
-          <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
-            <span className="text-slate-300">Şu anki kriterlerinizle uyuşan aktif kadro:</span>
-            <span className="text-emerald-400 font-bold font-mono text-sm px-2.5 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-500/40">
-              {matchingSummary} Kadro Tam Uyumlu
-            </span>
+          {/* Canlı Eşleşme Bildirimi */}
+          {formData.department && (
+            <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+              <span className="text-emerald-100/70">Şu anki kriterlerinizle uyuşan aktif kadro:</span>
+              <span className="text-white font-bold font-mono text-xs px-3 py-1 rounded-full bg-emerald-800/80 border border-emerald-600">
+                {matchingSummary} Kadro Tam Uyumlu
+              </span>
+            </div>
+          )}
+        </div>
+
+        {savedSuccess && (
+          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-sm font-bold flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+              <span>Kriterleriniz başarıyla kaydedildi! İlan akışına yönlendiriliyorsunuz...</span>
+            </div>
+            <ArrowRight className="w-4 h-4 text-emerald-700" />
           </div>
         )}
-      </div>
 
-      {savedSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-sm font-bold flex items-center justify-between animate-bounce">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-            <span>Kriterleriniz başarıyla kaydedildi! İlan akışına yönlendiriliyorsunuz...</span>
-          </div>
-          <ArrowRight className="w-4 h-4" />
-        </div>
-      )}
-
-      <form onSubmit={handleSave} className="space-y-6">
-        
-        {/* 1. EĞİTİM VE BÖLÜM BİLGİLERİ (EN KRİTİK ALAN) */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <GraduationCap className="w-5 h-5 text-sky-600" />
-              <span>1. Mezuniyet ve Bölüm Bilgileriniz</span>
-            </h2>
-            <span className="text-[11px] font-bold text-sky-600 bg-sky-50 px-2.5 py-1 rounded-full">
-              Zorunlu
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Eğitim Düzeyiniz
-              </label>
-              <select
-                value={formData.education_level || 'LISANS'}
-                onChange={(e) => {
-                  const val = e.target.value as EducationLevel;
-                  const kpssDefault = val === 'LISANS' ? 'KPSSP3' : (val === 'ONLISANS' ? 'KPSSP93' : 'KPSSP94');
-                  setFormData({ ...formData, education_level: val, kpss_type: kpssDefault });
-                }}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white font-semibold text-slate-800"
-              >
-                <option value="LISANS">Lisans (4 Yıllık Fakülte)</option>
-                <option value="ONLISANS">Önlisans (2 Yıllık Meslek Yüksekokulu)</option>
-                <option value="LISE">Ortaöğretim / Lise / Meslek Lisesi</option>
-                <option value="YUKSEK_LISANS">Yüksek Lisans / Tezli YL</option>
-              </select>
+        <form onSubmit={handleSave} className="space-y-6">
+          
+          {/* 1. EĞİTİM VE BÖLÜM BİLGİLERİ (EN KRİTİK ALAN) */}
+          <div className="bg-white p-6 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-[#1b4332]" />
+                <span>1. Mezuniyet ve Bölüm Bilgileriniz</span>
+              </h2>
+              <span className="text-[11px] font-bold text-[#1b4332] bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                Zorunlu
+              </span>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Mezuniyet Durumu
-              </label>
-              <select
-                value={formData.graduation_status || 'MEZUN'}
-                onChange={(e) => setFormData({ ...formData, graduation_status: e.target.value as GraduationStatus })}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white"
-              >
-                <option value="MEZUN">Mezun (Diplomamı Aldım)</option>
-                <option value="OGRENCI">Halen Öğrenciyim (Son Sınıf / Devam Ediyor)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Bölüm Arama ve Otomatik Tamamlama */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Mezun Olduğunuz / Okuduğunuz Bölüm
-            </label>
-            <input
-              type="text"
-              placeholder="Örn: Bilgisayar Mühendisliği, Hukuk, İktisat, Tıbbi Dokümantasyon..."
-              value={departmentSearch}
-              onChange={(e) => {
-                setDepartmentSearch(e.target.value);
-                setFormData({ ...formData, department: e.target.value });
-              }}
-              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none font-medium"
-            />
-
-            {/* Hızlı Seçim Rozetleri */}
-            <div className="mt-2.5 flex flex-wrap gap-1.5 items-center">
-              <span className="text-[11px] text-slate-400 py-0.5 font-medium">Hızlı Seçim:</span>
-              {departmentSuggestions.map((dept) => (
-                <button
-                  type="button"
-                  key={dept}
-                  onClick={() => {
-                    setDepartmentSearch(dept);
-                    setFormData({ ...formData, department: dept });
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Eğitim Düzeyiniz
+                </label>
+                <select
+                  value={formData.education_level || 'LISANS'}
+                  onChange={(e) => {
+                    const val = e.target.value as EducationLevel;
+                    const kpssDefault = val === 'LISANS' ? 'KPSSP3' : (val === 'ONLISANS' ? 'KPSSP93' : 'KPSSP94');
+                    setFormData({ ...formData, education_level: val, kpss_type: kpssDefault });
                   }}
-                  className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all ${
-                    formData.department === dept
-                      ? 'bg-sky-600 text-white border-sky-600 font-bold shadow-sm'
-                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                  }`}
+                  className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none bg-white font-semibold text-slate-800"
                 >
-                  {dept}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 2. SINAV PUANLARI (KPSS, ALES, YDS / YABANCI DİL) */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
-          <div className="border-b border-slate-100 pb-3">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Award className="w-5 h-5 text-sky-600" />
-              <span>2. Sınav Puanlarınız (KPSS, ALES, YDS / YÖKDİL)</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Hangi sınavlara girdiyseniz puanlarınızı yazın; girmediğiniz alanları boş bırakabilirsiniz.
-            </p>
-          </div>
-
-          {/* KPSS Bölümü */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <span>🏛️ Kamu Personel Seçme Sınavı (KPSS)</span>
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  KPSS Puan Türünüz
-                </label>
-                <select
-                  value={formData.kpss_type || 'KPSSP3'}
-                  onChange={(e) => setFormData({ ...formData, kpss_type: e.target.value as KpssType })}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white font-medium"
-                >
-                  <option value="KPSSP3">KPSSP3 (Lisans Düzeyi)</option>
-                  <option value="KPSSP93">KPSSP93 (Önlisans Düzeyi)</option>
-                  <option value="KPSSP94">KPSSP94 (Ortaöğretim / Lise Düzeyi)</option>
-                  <option value="KPSS_YOK">KPSS Puanım Yok (Sadece KPSS Şartsız İlanlar)</option>
+                  <option value="LISANS">Lisans (4 Yıllık Fakülte)</option>
+                  <option value="ONLISANS">Önlisans (2 Yıllık Meslek Yüksekokulu)</option>
+                  <option value="LISE">Ortaöğretim / Lise / Meslek Lisesi</option>
+                  <option value="YUKSEK_LISANS">Yüksek Lisans / Tezli YL</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  KPSS Puanınız (Örn: 78.45)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  placeholder="0.00"
-                  value={formData.kpss_score ?? ''}
-                  onChange={(e) => setFormData({ ...formData, kpss_score: e.target.value ? parseFloat(e.target.value) : undefined })}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none font-mono font-bold text-slate-800"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* ALES Bölümü */}
-          <div className="p-4 rounded-xl bg-amber-50/50 border border-amber-200 space-y-3">
-            <h3 className="text-xs font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
-              <span>🎓 Akademik Personel ve Lisansüstü Eğitimi Giriş Sınavı (ALES)</span>
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  ALES Puan Türünüz
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Mezuniyet Durumu
                 </label>
                 <select
-                  value={formData.ales_type || 'ESIT_AGIRLIK'}
-                  onChange={(e) => setFormData({ ...formData, ales_type: e.target.value as AlesType })}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white font-medium"
+                  value={formData.graduation_status || 'MEZUN'}
+                  onChange={(e) => setFormData({ ...formData, graduation_status: e.target.value as GraduationStatus })}
+                  className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none bg-white"
                 >
-                  <option value="ESIT_AGIRLIK">ALES Eşit Ağırlık</option>
-                  <option value="SAYISAL">ALES Sayısal</option>
-                  <option value="SOZEL">ALES Sözel</option>
+                  <option value="MEZUN">Mezun (Diplomamı Aldım)</option>
+                  <option value="OGRENCI">Halen Öğrenciyim (Son Sınıf / Devam Ediyor)</option>
                 </select>
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  ALES Puanınız (Varsa)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  placeholder="Örn: 75.50 (Üniversite ve Uzmanlık ilanları için)"
-                  value={formData.ales_score ?? ''}
-                  onChange={(e) => setFormData({ ...formData, ales_score: e.target.value ? parseFloat(e.target.value) : undefined })}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none font-mono font-bold text-slate-800"
-                />
-              </div>
             </div>
-          </div>
 
-          {/* Yabancı Dil (YDS / YÖKDİL) */}
-          <div className="p-4 rounded-xl bg-sky-50/50 border border-sky-200 space-y-3">
-            <h3 className="text-xs font-extrabold text-sky-900 uppercase tracking-wider flex items-center gap-1.5">
-              <span>🌍 Yabancı Dil Bilgisi (YDS / YÖKDİL)</span>
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  YDS Düzeyi
-                </label>
-                <select
-                  value={formData.yds_level || 'YOK'}
-                  onChange={(e) => setFormData({ ...formData, yds_level: e.target.value as YdsLevel })}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white font-medium"
-                >
-                  <option value="YOK">YDS Yok / Belirtilmedi</option>
-                  <option value="A">A Düzeyi (90 - 100 Puan)</option>
-                  <option value="B">B Düzeyi (80 - 89 Puan)</option>
-                  <option value="C">C Düzeyi (70 - 79 Puan)</option>
-                  <option value="D">D Düzeyi (60 - 69 Puan)</option>
-                  <option value="E">E Düzeyi (50 - 59 Puan)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Yabancı Dil Puanınız (Varsa Sayısal)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  placeholder="Örn: 70.00"
-                  value={formData.yds_score ?? ''}
-                  onChange={(e) => setFormData({ ...formData, yds_score: e.target.value ? parseFloat(e.target.value) : undefined })}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none font-mono"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. KİŞİSEL BİLGİLER VE YAŞ (YAŞ SINIRI ŞARTLARI İÇİN) */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <div className="border-b border-slate-100 pb-3">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-sky-600" />
-              <span>3. Kişisel Bilgiler ve Yaş Durumu</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Kamu alımlarında 30 veya 35 yaş sınırı şartı bulunduğu için doğum tarihiniz önemlidir.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Bölüm Arama ve Otomatik Tamamlama */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Adınız Soyadınız (Opsiyonel)
+                Mezun Olduğunuz / Okuduğunuz Bölüm
               </label>
               <input
                 type="text"
-                placeholder="Adınız Soyadınız"
-                value={formData.full_name || ''}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                placeholder="Örn: Bilgisayar Mühendisliği, Hukuk, İktisat, Tıbbi Dokümantasyon..."
+                value={departmentSearch}
+                onChange={(e) => {
+                  setDepartmentSearch(e.target.value);
+                  setFormData({ ...formData, department: e.target.value });
+                }}
+                className="w-full px-4 py-2.5 text-xs rounded-xl border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none font-medium"
               />
-            </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Doğum Tarihiniz {calculatedAge !== null ? `(${calculatedAge} Yaş)` : ''}
-              </label>
-              <input
-                type="date"
-                value={formData.birth_date || ''}
-                onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none font-medium"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Cinsiyet
-              </label>
-              <select
-                value={formData.gender || 'BELIRTILMEMIS'}
-                onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white"
-              >
-                <option value="BELIRTILMEMIS">Belirtmek İstemiyorum</option>
-                <option value="ERKEK">Erkek</option>
-                <option value="KADIN">Kadın</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                İkamet Ettiğiniz İl (Öncelikli İlanlar İçin)
-              </label>
-              <select
-                value={formData.residence_city || ''}
-                onChange={(e) => setFormData({ ...formData, residence_city: e.target.value })}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white"
-              >
-                <option value="">İl Seçiniz</option>
-                {CITIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+              {/* Hızlı Seçim Rozetleri */}
+              <div className="mt-2.5 flex flex-wrap gap-1.5 items-center">
+                <span className="text-[11px] text-slate-400 py-0.5 font-medium">Hızlı Seçim:</span>
+                {departmentSuggestions.map((dept) => (
+                  <button
+                    type="button"
+                    key={dept}
+                    onClick={() => {
+                      setDepartmentSearch(dept);
+                      setFormData({ ...formData, department: dept });
+                    }}
+                    className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all ${
+                      formData.department === dept
+                        ? 'bg-[#1b4332] text-white border-[#1b4332] font-bold shadow-sm'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    {dept}
+                  </button>
                 ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Askerlik Durumu (Erkek Adaylar İçin)
-              </label>
-              <select
-                value={formData.military_status || 'YOK'}
-                onChange={(e) => setFormData({ ...formData, military_status: e.target.value as MilitaryStatus })}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white"
-              >
-                <option value="YOK">İlgisiz / Kadın Aday</option>
-                <option value="YAPILDI">Yapıldı / Terhis</option>
-                <option value="TECİLLİ">Tecilli (Ertelemeli)</option>
-                <option value="MUAFIYET">Muaf</option>
-              </select>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* 4. SERTİFİKALAR VE EHLİYETLER */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <div className="border-b border-slate-100 pb-3">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-sky-600" />
-              <span>4. Sahip Olduğunuz Belgeler & Ehliyetler</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              İlanlardaki "B Sınıfı Ehliyet", "Özel Güvenlik Kartı" gibi ek şartlarla tam eşleşmek için sahip olduklarınızı işaretleyin:
-            </p>
+          {/* 2. SINAV PUANLARI (KPSS, ALES, YDS / YABANCI DİL) */}
+          <div className="bg-white p-6 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-5">
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Award className="w-5 h-5 text-[#1b4332]" />
+                <span>2. Sınav Puanlarınız (KPSS, ALES, YDS / YÖKDİL)</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Hangi sınavlara girdiyseniz puanlarınızı yazın; girmediğiniz alanları boş bırakabilirsiniz.
+              </p>
+            </div>
+
+            {/* KPSS Bölümü */}
+            <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200 space-y-3">
+              <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <span>🏛️ Kamu Personel Seçme Sınavı (KPSS)</span>
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    KPSS Puan Türünüz
+                  </label>
+                  <select
+                    value={formData.kpss_type || 'KPSSP3'}
+                    onChange={(e) => setFormData({ ...formData, kpss_type: e.target.value as KpssType })}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none bg-white font-medium"
+                  >
+                    <option value="KPSSP3">KPSSP3 (Lisans Düzeyi)</option>
+                    <option value="KPSSP93">KPSSP93 (Önlisans Düzeyi)</option>
+                    <option value="KPSSP94">KPSSP94 (Ortaöğretim / Lise Düzeyi)</option>
+                    <option value="KPSS_YOK">KPSS Puanım Yok (Sadece KPSS Şartsız İlanlar)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    KPSS Puanınız (Örn: 78.45)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder="0.00"
+                    value={formData.kpss_score ?? ''}
+                    onChange={(e) => setFormData({ ...formData, kpss_score: e.target.value ? parseFloat(e.target.value) : undefined })}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none font-mono font-bold text-slate-800"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ALES Bölümü */}
+            <div className="p-4 rounded-xl bg-amber-50/50 border border-amber-200 space-y-3">
+              <h3 className="text-xs font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                <span>🎓 Akademik Personel ve Lisansüstü Eğitimi Giriş Sınavı (ALES)</span>
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    ALES Puan Türünüz
+                  </label>
+                  <select
+                    value={formData.ales_type || 'ESIT_AGIRLIK'}
+                    onChange={(e) => setFormData({ ...formData, ales_type: e.target.value as AlesType })}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none bg-white font-medium"
+                  >
+                    <option value="ESIT_AGIRLIK">ALES Eşit Ağırlık</option>
+                    <option value="SAYISAL">ALES Sayısal</option>
+                    <option value="SOZEL">ALES Sözel</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    ALES Puanınız (Varsa)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder="Örn: 75.50 (Üniversite ve Uzmanlık ilanları için)"
+                    value={formData.ales_score ?? ''}
+                    onChange={(e) => setFormData({ ...formData, ales_score: e.target.value ? parseFloat(e.target.value) : undefined })}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none font-mono font-bold text-slate-800"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Yabancı Dil (YDS / YÖKDİL) */}
+            <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200 space-y-3">
+              <h3 className="text-xs font-extrabold text-[#1b4332] uppercase tracking-wider flex items-center gap-1.5">
+                <span>🌍 Yabancı Dil Bilgisi (YDS / YÖKDİL)</span>
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    YDS Düzeyi
+                  </label>
+                  <select
+                    value={formData.yds_level || 'YOK'}
+                    onChange={(e) => setFormData({ ...formData, yds_level: e.target.value as YdsLevel })}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none bg-white font-medium"
+                  >
+                    <option value="YOK">YDS Yok / Belirtilmedi</option>
+                    <option value="A">A Düzeyi (90 - 100 Puan)</option>
+                    <option value="B">B Düzeyi (80 - 89 Puan)</option>
+                    <option value="C">C Düzeyi (70 - 79 Puan)</option>
+                    <option value="D">D Düzeyi (60 - 69 Puan)</option>
+                    <option value="E">E Düzeyi (50 - 59 Puan)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Yabancı Dil Puanınız (Varsa Sayısal)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder="Örn: 70.00"
+                    value={formData.yds_score ?? ''}
+                    onChange={(e) => setFormData({ ...formData, yds_score: e.target.value ? parseFloat(e.target.value) : undefined })}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 pt-1">
-            {CERTIFICATE_OPTIONS.map((cert) => {
-              const isChecked = (formData.certificates || []).includes(cert);
-              return (
-                <button
-                  type="button"
-                  key={cert}
-                  onClick={() => handleCertificateToggle(cert)}
-                  className={`text-xs px-3.5 py-2 rounded-xl border transition-all ${
-                    isChecked
-                      ? 'bg-sky-600 text-white border-sky-600 font-bold shadow-sm scale-105'
-                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                  }`}
+          {/* 3. KİŞİSEL BİLGİLER VE YAŞ (YAŞ SINIRI ŞARTLARI İÇİN) */}
+          <div className="bg-white p-6 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-4">
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-[#1b4332]" />
+                <span>3. Kişisel Bilgiler ve Yaş Durumu</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Kamu alımlarında 30 veya 35 yaş sınırı şartı bulunduğu için doğum tarihiniz önemlidir.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Adınız Soyadınız (Opsiyonel)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Adınız Soyadınız"
+                  value={formData.full_name || ''}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Doğum Tarihiniz {calculatedAge !== null ? `(${calculatedAge} Yaş)` : ''}
+                </label>
+                <input
+                  type="date"
+                  value={formData.birth_date || ''}
+                  onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Cinsiyet
+                </label>
+                <select
+                  value={formData.gender || 'BELIRTILMEMIS'}
+                  onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none bg-white"
                 >
-                  {isChecked ? '✓ ' : '+ '}
-                  {cert}
-                </button>
-              );
-            })}
+                  <option value="BELIRTILMEMIS">Belirtmek İstemiyorum</option>
+                  <option value="ERKEK">Erkek</option>
+                  <option value="KADIN">Kadın</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  İkamet Ettiğiniz İl (Öncelikli İlanlar İçin)
+                </label>
+                <select
+                  value={formData.residence_city || ''}
+                  onChange={(e) => setFormData({ ...formData, residence_city: e.target.value })}
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none bg-white"
+                >
+                  <option value="">İl Seçiniz</option>
+                  {CITIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Askerlik Durumu (Erkek Adaylar İçin)
+                </label>
+                <select
+                  value={formData.military_status || 'YOK'}
+                  onChange={(e) => setFormData({ ...formData, military_status: e.target.value as MilitaryStatus })}
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none bg-white"
+                >
+                  <option value="YOK">İlgisiz / Kadın Aday</option>
+                  <option value="YAPILDI">Yapıldı / Terhis</option>
+                  <option value="TECİLLİ">Tecilli (Ertelemeli)</option>
+                  <option value="MUAFIYET">Muaf</option>
+                </select>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* KAYDET VE SIFIRLA AKSİYON BARI */}
-        <div className="sticky bottom-4 z-40 bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-slate-300 shadow-xl flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              if (confirm('Kriterlerinizi temizlemek istediğinize emin misiniz?')) {
-                resetProfile();
-                setFormData({
-                  education_level: 'LISANS',
-                  graduation_status: 'MEZUN',
-                  kpss_type: 'KPSSP3',
-                  certificates: [],
-                });
-                setDepartmentSearch('');
-              }
-            }}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 hover:text-rose-600 transition-colors"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Kriterleri Sıfırla</span>
-          </button>
+          {/* 4. SERTİFİKALAR VE EHLİYETLER */}
+          <div className="bg-white p-6 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-4">
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-[#1b4332]" />
+                <span>4. Sahip Olduğunuz Belgeler & Ehliyetler</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                İlanlardaki "B Sınıfı Ehliyet", "Özel Güvenlik Kartı" gibi ek şartlarla tam eşleşmek için sahip olduklarınızı işaretleyin:
+              </p>
+            </div>
 
-          <button
-            type="submit"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white text-sm font-bold shadow-lg shadow-sky-600/30 transition-all hover:scale-105"
-          >
-            <Save className="w-4 h-4" />
-            <span>Bilgilerimi Kaydet ve İlanları Eşle</span>
-          </button>
-        </div>
-      </form>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {CERTIFICATE_OPTIONS.map((cert) => {
+                const isChecked = (formData.certificates || []).includes(cert);
+                return (
+                  <button
+                    type="button"
+                    key={cert}
+                    onClick={() => handleCertificateToggle(cert)}
+                    className={`text-xs px-3.5 py-2 rounded-xl border transition-all ${
+                      isChecked
+                        ? 'bg-[#1b4332] text-white border-[#1b4332] font-bold shadow-sm scale-105'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    {isChecked ? '✓ ' : '+ '}
+                    {cert}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* KAYDET VE SIFIRLA AKSİYON BARI */}
+          <div className="sticky bottom-4 z-40 bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-[#e5dfd5] shadow-xl flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm('Kriterlerinizi temizlemek istediğinize emin misiniz?')) {
+                  resetProfile();
+                  setFormData({
+                    education_level: 'LISANS',
+                    graduation_status: 'MEZUN',
+                    kpss_type: 'KPSSP3',
+                    certificates: [],
+                  });
+                  setDepartmentSearch('');
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 hover:text-rose-600 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Kriterleri Sıfırla</span>
+            </button>
+
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-xs font-bold shadow-md shadow-emerald-950/20 transition-all hover:scale-105"
+            >
+              <Save className="w-4 h-4 text-emerald-300" />
+              <span>Bilgilerimi Kaydet ve İlanları Eşle</span>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

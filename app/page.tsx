@@ -151,7 +151,7 @@ export default function HomePage() {
       // 1. Sadece Bana Uygunlar
       if (onlySuitable) {
         if (!hasProfileFilled) return true;
-        const isEligible = item.matchSummary.suitableCount > 0 || item.matchSummary.maybeCount > 0;
+        const isEligible = item.matchSummary.suitableCount > 0;
         if (!isEligible) return false;
       }
 

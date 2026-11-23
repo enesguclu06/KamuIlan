@@ -48,6 +48,26 @@ export function calculateAge(birthDateStr?: string): number | null {
   }
 }
 
+const GENERIC_DEPT_WORDS = new Set([
+  'muhendisligi', 'muhendisi', 'muhendis',
+  'ogretmenligi', 'ogretmeni', 'ogretmen',
+  'teknikerligi', 'teknikeri', 'tekniker',
+  'teknisyenligi', 'teknisyeni', 'teknisyen',
+  'uzmanligi', 'uzmani', 'uzman',
+  'hekimligi', 'hekim', 'doktorlugu',
+  'bolumu', 'programi', 'fakultesi', 'anabilim', 'dali', 'yuksekokulu',
+  'lisans', 'onlisans', 've', 'ile', 'veya', 've/veya'
+]);
+
+export function extractCoreKeywords(deptName: string): string[] {
+  if (!deptName) return [];
+  const norm = normalizeTurkish(deptName);
+  return norm
+    .split(/[\s\-_/,()]+/)
+    .map(w => w.trim())
+    .filter(w => w.length >= 3 && !GENERIC_DEPT_WORDS.has(w));
+}
+
 export function checkDepartmentMatch(
   userDepartment?: string,
   allowedDepartments: string[] = [],
@@ -57,17 +77,20 @@ export function checkDepartmentMatch(
   if (!allowedDepartments || allowedDepartments.length === 0) return true;
   if (!userDepartment) return false;
 
-  const normUser = normalizeTurkish(userDepartment);
+  const userCore = extractCoreKeywords(userDepartment);
+  if (userCore.length === 0) return false;
 
   for (const dept of allowedDepartments) {
-    const normAllowed = normalizeTurkish(dept);
-    if (normAllowed.includes(normUser) || normUser.includes(normAllowed)) {
-      return true;
-    }
-    const userWords = normUser.split(/\s+/).filter(w => w.length >= 3);
-    const allowedWords = normAllowed.split(/\s+/).filter(w => w.length >= 3);
-    const hasCommonWord = userWords.some(uw => allowedWords.some(aw => aw.includes(uw) || uw.includes(aw)));
-    if (hasCommonWord) {
+    const allowedCore = extractCoreKeywords(dept);
+    if (allowedCore.length === 0) continue;
+
+    // Adayın bölümünün ana disiplini (örn: "bilgisayar", "yazilim", "ziraat", "hukuk")
+    // İlandaki ana disiplinle eşleşiyor mu?
+    const hasCoreMatch = userCore.some(uk => 
+      allowedCore.some(ak => ak === uk || (uk.length >= 4 && ak.startsWith(uk)) || (ak.length >= 4 && uk.startsWith(ak)))
+    );
+
+    if (hasCoreMatch) {
       return true;
     }
   }
@@ -105,7 +128,6 @@ export function evaluateMatch(
   let isMaybe = false;
 
   // 1. EĞİTİM SEVİYESİ
-  // Lisans mezunu Yüksek Lisans kadrolarına şartlı bakabilir veya Yüksek Lisans mezunu Lisans kadrosuna uyabilir
   let eduMatch = true;
   if (user.education_level) {
     if (position.education_level === 'YUKSEK_LISANS' && user.education_level !== 'YUKSEK_LISANS') {
@@ -121,11 +143,9 @@ export function evaluateMatch(
       eduMatch = false;
       reasons.push(`Bu kadro 2 yıllık Önlisans mezuniyeti istemektedir.`);
     } else if (position.education_level === 'LISE' && user.education_level !== 'LISE') {
-      // Kamuda KPSS P94 sadece lise mezuniyeti düzeyinde alınmışsa geçerlidir
-      if (user.kpss_type !== 'KPSSP94') {
-        isMaybe = true;
-        reasons.push(`Bu kadro ortaöğretim/lise düzeyindedir.`);
-      }
+      isUnfit = true;
+      eduMatch = false;
+      reasons.push(`Bu kadro ortaöğretim / lise düzeyindedir. Lisans mezunları lise kadrolarına başvuramaz.`);
     }
   }
 
