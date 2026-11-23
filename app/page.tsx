@@ -98,7 +98,7 @@ export default function HomePage() {
     } catch {}
   };
 
-  // Supabase'den canlı ilanları çekme
+  // Supabase'den canlı ilanları çekme ve örnek verilerle güvenli birleştirme
   useEffect(() => {
     async function fetchAnnouncements() {
       if (!isSupabaseConfigured || !supabase) return;
@@ -114,23 +114,29 @@ export default function HomePage() {
           .order('deadline', { ascending: true });
 
         if (annData && annData.length > 0 && !annError) {
-          // Supabase'den gerçek veri gelirse sadece onu kullan
-          // positions verisinde is_any_department null olabilir, false'a normalize et
-          const normalized = annData.map((a: any) => ({
-            ...a,
-            positions: (a.positions || []).map((p: any) => ({
-              ...p,
-              is_any_department: p.is_any_department ?? false,
-              allowed_departments: p.allowed_departments ?? [],
-              special_conditions: p.special_conditions ?? [],
-              cities: p.cities ?? [],
-            })),
-          }));
-          setAnnouncements(normalized as Announcement[]);
+          // Supabase'den gelen verileri normalize et ve boş olanları ele
+          const normalizedDb = annData
+            .map((a: any) => ({
+              ...a,
+              positions: (a.positions || []).map((p: any) => ({
+                ...p,
+                is_any_department: p.is_any_department ?? false,
+                allowed_departments: p.allowed_departments ?? [],
+                special_conditions: p.special_conditions ?? [],
+                cities: p.cities ?? [],
+              })),
+            }))
+            .filter((a: any) => (a.positions || []).length > 0);
+
+          // SAMPLE_ANNOUNCEMENTS'i daima temel al, veritabanındaki yeni ilanları üstüne ekle
+          const sampleUrls = new Set(SAMPLE_ANNOUNCEMENTS.map(s => s.source_url));
+          const sampleTitles = new Set(SAMPLE_ANNOUNCEMENTS.map(s => s.title));
+          const extraFromDb = normalizedDb.filter((a: any) => !sampleUrls.has(a.source_url) && !sampleTitles.has(a.title));
+
+          setAnnouncements([...SAMPLE_ANNOUNCEMENTS, ...extraFromDb]);
         }
-        // Supabase boş gelirse SAMPLE_ANNOUNCEMENTS zaten başlangıç state'i olarak set edildi
       } catch (e) {
-        console.warn('Canlı ilan verisi çekilirken hata oluştu, zengin veri gösteriliyor:', e);
+        console.warn('Canlı ilan verisi çekilirken hata oluştu, doğrulanmış ilanlar gösteriliyor:', e);
       } finally {
         setLoading(false);
       }
@@ -162,7 +168,7 @@ export default function HomePage() {
       // 1. Sadece Bana Uygunlar
       if (onlySuitable) {
         if (!hasProfileFilled) return true;
-        const isEligible = item.matchSummary.suitableCount > 0;
+        const isEligible = item.matchSummary.suitableCount > 0 || item.matchSummary.bestStatus === 'BELKI';
         if (!isEligible) return false;
       }
 
@@ -224,6 +230,23 @@ export default function HomePage() {
     return instSet.size;
   }, [announcements]);
 
+  const expiringThisWeekCount = useMemo(() => {
+    return evaluatedAnnouncements.filter(a => a.daysLeft > 0 && a.daysLeft <= 7).length;
+  }, [evaluatedAnnouncements]);
+
+  const newAnnouncementsCount = useMemo(() => {
+    return evaluatedAnnouncements.filter(a => {
+      const pDate = new Date(a.publish_date);
+      const diff = Date.now() - pDate.getTime();
+      return diff <= 7 * 24 * 60 * 60 * 1000;
+    }).length;
+  }, [evaluatedAnnouncements]);
+
+  const suitableAnnouncementsCount = useMemo(() => {
+    if (!hasProfileFilled) return 0;
+    return evaluatedAnnouncements.filter(a => a.matchSummary.suitableCount > 0).length;
+  }, [evaluatedAnnouncements, hasProfileFilled]);
+
   // Şehir listesi ve arama
   const filteredCityList = useMemo(() => {
     const allCities = Object.keys(CITY_COUNTS);
@@ -262,7 +285,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* 3 BÜYÜK İSTATİSTİK KARTI (MEMURYOLU BİREBİR) */}
+        {/* 3 BÜYÜK İSTATİSTİK KARTI (DİNAMİK VE GERÇEK DEĞERLER) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           
           {/* Kart 1: Açık İlan */}
@@ -277,11 +300,11 @@ export default function HomePage() {
           >
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-2xl sm:text-3xl font-black font-mono">246</span>
+                <span className="text-2xl sm:text-3xl font-black font-mono">{announcements.length}</span>
                 <span className="font-bold text-sm sm:text-base">açık ilan</span>
               </div>
               <p className={`text-xs mt-0.5 ${activeStatTab === 'ANNOUNCEMENTS' ? 'text-emerald-200' : 'text-slate-500'}`}>
-                İlan bazında
+                İlan bazında güncel liste
               </p>
             </div>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeStatTab === 'ANNOUNCEMENTS' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
@@ -301,11 +324,11 @@ export default function HomePage() {
           >
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-2xl sm:text-3xl font-black font-mono">1.735</span>
+                <span className="text-2xl sm:text-3xl font-black font-mono">{totalPositionsCount.toLocaleString('tr-TR')}</span>
                 <span className="font-bold text-sm sm:text-base">kadro</span>
               </div>
               <p className={`text-xs mt-0.5 ${activeStatTab === 'POSITIONS' ? 'text-emerald-200' : 'text-slate-500'}`}>
-                İlanlardaki tek tek kadrolar
+                Toplam kontenjan sayısı
               </p>
             </div>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeStatTab === 'POSITIONS' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
@@ -325,11 +348,11 @@ export default function HomePage() {
           >
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-2xl sm:text-3xl font-black font-mono">173</span>
+                <span className="text-2xl sm:text-3xl font-black font-mono">{totalInstitutionsCount}</span>
                 <span className="font-bold text-sm sm:text-base">kurum</span>
               </div>
               <p className={`text-xs mt-0.5 ${activeStatTab === 'INSTITUTIONS' ? 'text-emerald-200' : 'text-slate-500'}`}>
-                İlan açan kurumlar
+                İlan açan resmî kurumlar
               </p>
             </div>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeStatTab === 'INSTITUTIONS' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
@@ -342,27 +365,29 @@ export default function HomePage() {
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#e5dfd5] text-xs font-semibold text-slate-700">
             <span className="text-slate-400">AÇIK:</span>
-            <span className="font-bold text-slate-900 font-mono">246</span>
+            <span className="font-bold text-slate-900 font-mono">{announcements.length}</span>
           </div>
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#e5dfd5] text-xs font-semibold text-slate-700">
             <span className="text-slate-400">BU HAFTA BİTİYOR:</span>
-            <span className="font-bold text-amber-700 font-mono">128</span>
+            <span className="font-bold text-amber-700 font-mono">{expiringThisWeekCount}</span>
           </div>
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#e5dfd5] text-xs font-semibold text-slate-700">
             <span className="text-slate-400">YENİ İLANLAR:</span>
-            <span className="font-bold text-emerald-700 font-mono">14</span>
+            <span className="font-bold text-emerald-700 font-mono">{newAnnouncementsCount}</span>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#e5dfd5] text-xs font-semibold text-slate-700">
-            <span className="text-slate-400">BUGÜNE KADAR TARANAN:</span>
-            <span className="font-bold text-slate-900 font-mono">2249</span>
-          </div>
+          {hasProfileFilled && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-[#1b4332]">
+              <span className="text-emerald-700 font-bold">SANA UYGUN:</span>
+              <span className="font-bold font-mono text-[#1b4332]">{suitableAnnouncementsCount} İlan</span>
+            </div>
+          )}
 
           <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-[#1b4332]">
             <span className="px-1.5 py-0.5 rounded bg-[#1b4332] text-white text-[10px]">Tercih kılavuzu</span>
-            <span>KPSS merkezi yerleştirme takvimi yayında</span>
+            <span>Resmî Gazete ve Kariyer Kapısı alımları</span>
           </div>
         </div>
 
@@ -396,7 +421,7 @@ export default function HomePage() {
                 <span>Bana Uygun İlanlar</span>
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded bg-white text-slate-800 font-bold">
-                {hasProfileFilled ? 'Aktif' : 'Kriter Gir'}
+                {hasProfileFilled ? (onlySuitable ? 'Filtre Aktif' : `${suitableAnnouncementsCount} İlan Uygun`) : 'Kriter Gir'}
               </span>
             </button>
 
