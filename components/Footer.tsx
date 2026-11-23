@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Building2, Heart, ShieldCheck, Zap } from 'lucide-react';
+import { Building2, Heart, ShieldCheck, Sparkles, CheckCircle2 } from 'lucide-react';
 
 export function Footer() {
   return (
@@ -17,11 +17,17 @@ export function Footer() {
               <span className="text-white font-bold text-lg">Kamuİlan AI</span>
             </div>
             <p className="text-slate-400 text-xs sm:text-sm max-w-md leading-relaxed">
-              Resmî Gazete ve Kariyer Kapısı alımlarını yapay zeka ile ayrıştırıp adayların eğitim, KPSS ve kriterleriyle eşleştiren %100 ücretsiz kamu ilan takip platformu.
+              Resmî Gazete ve Kariyer Kapısı personel alım ilanlarını yapay zeka ile standart formatta analiz eden, adayların mezuniyet, KPSS, ALES ve YDS puanlarına göre anlık eşleştirme yapan yeni nesil kamu iş platformu.
             </p>
-            <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
-              <Zap className="w-4 h-4" />
-              <span>%100 Ücretsiz Altyapı (Next.js + Supabase + Gemini 2.5 Flash + Telegram API)</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 border border-slate-700">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                Resmî Gazete & Kariyer Kapısı
+              </span>
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 border border-slate-700">
+                <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+                Yapay Zeka Destekli
+              </span>
             </div>
           </div>
 
@@ -30,13 +36,13 @@ export function Footer() {
             <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4">Hızlı Erişim</h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <Link href="/" className="hover:text-white transition-colors">Tüm İlanlar</Link>
+                <Link href="/" className="hover:text-white transition-colors">Tüm Kamu İlanları</Link>
               </li>
               <li>
-                <Link href="/profil" className="hover:text-white transition-colors">Profil ve Kriter Sihirbazı</Link>
+                <Link href="/profil" className="hover:text-white transition-colors">Profil ve Kriterlerim</Link>
               </li>
               <li>
-                <Link href="/admin" className="hover:text-white transition-colors">Manuel İlan Ekleme (AI)</Link>
+                <Link href="/admin" className="hover:text-white transition-colors">İlan Analiz Paneli (AI)</Link>
               </li>
               <li>
                 <a href="https://www.resmigazete.gov.tr" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Resmî Gazete Çeşitli İlanlar</a>
@@ -49,21 +55,21 @@ export function Footer() {
 
           {/* System Info */}
           <div>
-            <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4">Otomasyon</h4>
-            <p className="text-xs text-slate-400 mb-2">
-              GitHub Actions botu her gün <strong>08:30 ve 18:30 TSİ</strong>'de Resmî Gazete'yi tarayarak uygun adaylara anında Telegram bildirimi iletir.
+            <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4">Akıllı Eşleştirme</h4>
+            <p className="text-xs text-slate-400 leading-relaxed mb-3">
+              Profilinizdeki eğitim seviyesi, YÖK bölümünüz, KPSS/ALES puanınız ve yabancı dil seviyeniz kadro şartlarıyla deterministik olarak kıyaslanır; uygun kadrolar yeşil rozetle öne çıkarılır.
             </p>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-[11px] border border-slate-700">
               <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
-              <span>Free Tier Uyumlu (0 TL)</span>
+              <span>Güvenli & Ücretsiz Açık Platform</span>
             </div>
           </div>
         </div>
 
         <div className="border-t border-slate-800 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <p>© {new Date().getFullYear()} Kamuİlan AI. Açık kaynak kamu hizmeti girişimi.</p>
+          <p>© {new Date().getFullYear()} Kamuİlan AI. Tüm hakları saklıdır.</p>
           <p className="flex items-center gap-1">
-            Yapay Zeka ve Veri Mühendisliği ile geliştirildi <Heart className="w-3.5 h-3.5 text-red-500 inline fill-red-500" />
+            Kamu adayları için özenle geliştirildi <Heart className="w-3.5 h-3.5 text-rose-500 inline fill-rose-500" />
           </p>
         </div>
       </div>

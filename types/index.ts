@@ -1,9 +1,11 @@
-export type EducationLevel = 'LISE' | 'ONLISANS' | 'LISANS';
+export type EducationLevel = 'LISE' | 'ONLISANS' | 'LISANS' | 'YUKSEK_LISANS';
 export type KpssType = 'KPSSP3' | 'KPSSP93' | 'KPSSP94' | 'KPSS_YOK';
+export type AlesType = 'SAYISAL' | 'ESIT_AGIRLIK' | 'SOZEL';
 export type YdsLevel = 'YOK' | 'E' | 'D' | 'C' | 'B' | 'A';
 export type GenderRequirement = 'HEPSI' | 'ERKEK' | 'KADIN';
 export type ExamType = 'MULAKAT' | 'KPSS_PUAN_USTUNLUGU' | 'UYGULAMALI';
 export type GraduationStatus = 'MEZUN' | 'OGRENCI';
+export type MilitaryStatus = 'YAPILDI' | 'MUAFIYET' | 'TECİLLİ' | 'YOK';
 export type MatchStatus = 'UYGUN' | 'BELKI' | 'UYMADI';
 
 export interface Department {
@@ -36,9 +38,12 @@ export interface Position {
   education_level: EducationLevel;
   kpss_type: KpssType;
   min_kpss_score: number;
+  min_ales_score?: number | null;
+  ales_type?: AlesType | null;
   allowed_departments: string[];
   is_any_department: boolean;
   min_yds_level: YdsLevel;
+  min_yds_score?: number | null;
   max_age: number | null;
   gender_requirement: GenderRequirement;
   cities: string[];
@@ -52,15 +57,21 @@ export interface UserProfile {
   full_name?: string;
   birth_date?: string;
   gender?: 'ERKEK' | 'KADIN' | 'BELIRTILMEMIS';
+  military_status?: MilitaryStatus;
   education_level?: EducationLevel;
   department?: string;
   graduation_status?: GraduationStatus;
+  graduation_year?: number;
   expected_graduation_date?: string;
   kpss_type?: KpssType;
   kpss_score?: number;
+  ales_type?: AlesType;
+  ales_score?: number;
   yds_level?: YdsLevel;
+  yds_score?: number;
   certificates?: string[];
   preferred_cities?: string[];
+  residence_city?: string;
   telegram_chat_id?: string;
   notify_enabled?: boolean;
 }
@@ -73,6 +84,7 @@ export interface MatchEvaluation {
     education: { match: boolean; user: string; required: string };
     department: { match: boolean; user: string; required: string };
     kpss: { match: boolean; user: string; required: string };
+    ales?: { match: boolean; user: string; required: string };
     yds: { match: boolean; user: string; required: string };
     age: { match: boolean; user: string; required: string };
     gender: { match: boolean; user: string; required: string };

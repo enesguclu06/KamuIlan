@@ -246,7 +246,7 @@ export default function AnnouncementDetailPage() {
         <div className="flex items-center gap-2">
           <GraduationCap className="w-5 h-5 text-sky-600 flex-shrink-0" />
           <span>
-            Karşılaştırma profili: <strong>{profile?.department || 'Bölüm Tanımsız'}</strong> | {profile?.education_level} | KPSS: {profile?.kpss_score || '0'}
+            Karşılaştırma profili: <strong>{profile?.department || 'Bölüm Tanımsız'}</strong> | {profile?.education_level || 'Eğitim Düzeyi'} {profile?.kpss_score ? `| KPSS: ${profile.kpss_score}` : ''} {profile?.ales_score ? `| ALES: ${profile.ales_score}` : ''} {profile?.yds_score ? `| Dil: ${profile.yds_score}` : ''}
           </span>
         </div>
         <Link href="/profil" className="font-bold text-sky-700 hover:underline flex-shrink-0">
@@ -396,7 +396,7 @@ export default function AnnouncementDetailPage() {
                     {/* 4. Yabancı Dil (YDS) */}
                     <div className={`p-3 rounded-xl border bg-white ${criteriaMatrix.yds.match ? 'border-emerald-200' : 'border-amber-200'}`}>
                       <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-bold text-slate-500">YDS Seviyesi</span>
+                        <span className="font-bold text-slate-500">YDS / YÖKDİL</span>
                         {criteriaMatrix.yds.match ? (
                           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         ) : (
@@ -410,6 +410,26 @@ export default function AnnouncementDetailPage() {
                         <strong>Senin:</strong> {criteriaMatrix.yds.user}
                       </p>
                     </div>
+
+                    {/* 5. ALES (Varsa) */}
+                    {criteriaMatrix.ales && (
+                      <div className={`p-3 rounded-xl border bg-white ${criteriaMatrix.ales.match ? 'border-emerald-200' : 'border-rose-200'}`}>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="font-bold text-slate-500">ALES Şartı</span>
+                          {criteriaMatrix.ales.match ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-rose-600" />
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-800">
+                          <strong>İstenen:</strong> {criteriaMatrix.ales.required}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          <strong>Senin:</strong> {criteriaMatrix.ales.user}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Sınav ve Yerleştirme Türü */}

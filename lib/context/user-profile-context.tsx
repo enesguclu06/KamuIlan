@@ -6,30 +6,16 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 
 interface UserProfileContextType {
   profile: UserProfile | null;
+  hasProfileFilled: boolean;
   updateProfile: (newProfile: UserProfile) => Promise<void>;
+  resetProfile: () => void;
   isLoading: boolean;
   isLoggedIn: boolean;
   userEmail: string | null;
   logout: () => Promise<void>;
 }
 
-const STORAGE_KEY = 'kamu_ilan_user_profile_v1';
-
-const defaultProfile: UserProfile = {
-  full_name: '',
-  birth_date: '1998-05-15',
-  gender: 'BELIRTILMEMIS',
-  education_level: 'LISANS',
-  department: 'Bilgisayar Mühendisliği',
-  graduation_status: 'MEZUN',
-  kpss_type: 'KPSSP3',
-  kpss_score: 78.5,
-  yds_level: 'D',
-  certificates: ['B Sınıfı Ehliyet'],
-  preferred_cities: [],
-  telegram_chat_id: '',
-  notify_enabled: true,
-};
+const STORAGE_KEY = 'kamu_ilan_user_profile_v2';
 
 const UserProfileContext = createContext<UserProfileContextType | undefined>(undefined);
 
@@ -49,14 +35,13 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
             setIsLoggedIn(true);
             setUserEmail(session.user.email || null);
 
-            // Supabase user_profiles tablosundan çek
             const { data, error } = await (supabase as any)
               .from('user_profiles')
               .select('*')
               .eq('user_id', session.user.id)
               .single();
 
-            if (data && !error) {
+            if (data && !error && (data.department || data.kpss_score || data.education_level)) {
               setProfile(data as UserProfile);
               setIsLoading(false);
               return;
@@ -67,18 +52,21 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         }
       }
 
-      // 2. Yerel Depolama (LocalStorage) Yedeği
+      // 2. Yerel Depolama (LocalStorage)
       try {
         const local = localStorage.getItem(STORAGE_KEY);
         if (local) {
-          setProfile(JSON.parse(local));
+          const parsed = JSON.parse(local);
+          if (parsed && (parsed.department || parsed.kpss_score || parsed.education_level)) {
+            setProfile(parsed);
+          } else {
+            setProfile(null);
+          }
         } else {
-          // Kullanıcıya ilk girişte hoş bir deneyim sunmak için varsayılan profil
-          setProfile(defaultProfile);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultProfile));
+          setProfile(null);
         }
       } catch {
-        setProfile(defaultProfile);
+        setProfile(null);
       }
       setIsLoading(false);
     }
@@ -94,7 +82,6 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       console.warn('LocalStorage yazma hatası:', e);
     }
 
-    // Eğer kullanıcı Supabase'e giriş yapmışsa veritabanına da yaz
     if (isSupabaseConfigured && supabase && isLoggedIn) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -111,6 +98,13 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     }
   };
 
+  const resetProfile = () => {
+    setProfile(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+  };
+
   const logout = async () => {
     if (isSupabaseConfigured && supabase) {
       await supabase.auth.signOut();
@@ -119,11 +113,17 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     setUserEmail(null);
   };
 
+  const hasProfileFilled = Boolean(
+    profile && (profile.department || profile.kpss_score || profile.education_level)
+  );
+
   return (
     <UserProfileContext.Provider
       value={{
         profile,
+        hasProfileFilled,
         updateProfile,
+        resetProfile,
         isLoading,
         isLoggedIn,
         userEmail,

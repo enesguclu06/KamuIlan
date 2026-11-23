@@ -1,4 +1,4 @@
-import { UserProfile, Position, MatchEvaluation, MatchStatus, AnnouncementMatchSummary } from '@/types';
+import { UserProfile, Position, MatchEvaluation, MatchStatus, AnnouncementMatchSummary, YdsLevel } from '@/types';
 
 const YDS_WEIGHTS: Record<string, number> = {
   YOK: 0,
@@ -8,6 +8,15 @@ const YDS_WEIGHTS: Record<string, number> = {
   B: 4,
   A: 5,
 };
+
+export function scoreToYdsLevel(score?: number): YdsLevel {
+  if (!score || score < 50) return 'YOK';
+  if (score >= 90) return 'A';
+  if (score >= 80) return 'B';
+  if (score >= 70) return 'C';
+  if (score >= 60) return 'D';
+  return 'E';
+}
 
 export function normalizeTurkish(text: string): string {
   if (!text) return '';
@@ -55,7 +64,6 @@ export function checkDepartmentMatch(
     if (normAllowed.includes(normUser) || normUser.includes(normAllowed)) {
       return true;
     }
-    // Kelime bazlı eşleşme (örn: "bilgisayar mühendisliği" ve "bilgisayar müh.")
     const words = normUser.split(' ').filter(w => w.length > 3);
     if (words.length > 0 && words.every(w => normAllowed.includes(w))) {
       return true;
@@ -70,8 +78,8 @@ export function evaluateMatch(
   position: Position,
   announcementDeadline?: string
 ): MatchEvaluation {
-  // Eğer kullanıcı profili hiç girilmemişse nötr/bilgi durumu döndür
-  if (!user || (!user.education_level && !user.department && !user.kpss_score)) {
+  // Eğer kullanıcı profili hiç girilmemişse veya boşsa
+  if (!user || (!user.education_level && !user.department && !user.kpss_score && !user.ales_score)) {
     return {
       status: 'BELKI',
       reasons: ['Kriterlerinizi karşılaştırmak için profilinizi doldurunuz.'],
@@ -80,6 +88,7 @@ export function evaluateMatch(
         education: { match: false, user: 'Girilmedi', required: position.education_level },
         department: { match: false, user: 'Girilmedi', required: position.is_any_department ? 'Tüm Bölümler' : position.allowed_departments.join(', ') || 'Belirtilmedi' },
         kpss: { match: false, user: 'Girilmedi', required: `${position.kpss_type} (${position.min_kpss_score})` },
+        ales: position.min_ales_score ? { match: false, user: 'Girilmedi', required: `En az ${position.min_ales_score}` } : undefined,
         yds: { match: true, user: 'Girilmedi', required: position.min_yds_level },
         age: { match: true, user: 'Girilmedi', required: position.max_age ? `Azami ${position.max_age}` : 'Sınır Yok' },
         gender: { match: true, user: 'Girilmedi', required: position.gender_requirement },
@@ -94,10 +103,28 @@ export function evaluateMatch(
   let isMaybe = false;
 
   // 1. EĞİTİM SEVİYESİ
-  const eduMatch = !user.education_level || user.education_level === position.education_level;
-  if (user.education_level && user.education_level !== position.education_level) {
-    isUnfit = true;
-    reasons.push(`Eğitim seviyeniz (${user.education_level}) ilanın talep ettiği seviyeye (${position.education_level}) uymuyor.`);
+  // Lisans mezunu Yüksek Lisans kadrolarına şartlı bakabilir veya Yüksek Lisans mezunu Lisans kadrosuna uyabilir
+  let eduMatch = true;
+  if (user.education_level) {
+    if (position.education_level === 'YUKSEK_LISANS' && user.education_level !== 'YUKSEK_LISANS') {
+      isUnfit = true;
+      eduMatch = false;
+      reasons.push(`Bu kadro Yüksek Lisans derecesi istemektedir. Profiliniz: ${user.education_level}`);
+    } else if (position.education_level === 'LISANS' && user.education_level !== 'LISANS' && user.education_level !== 'YUKSEK_LISANS') {
+      isUnfit = true;
+      eduMatch = false;
+      reasons.push(`Bu kadro 4 yıllık Lisans mezuniyeti istemektedir. Profiliniz: ${user.education_level}`);
+    } else if (position.education_level === 'ONLISANS' && user.education_level !== 'ONLISANS') {
+      isUnfit = true;
+      eduMatch = false;
+      reasons.push(`Bu kadro 2 yıllık Önlisans mezuniyeti istemektedir.`);
+    } else if (position.education_level === 'LISE' && user.education_level !== 'LISE') {
+      // Kamuda KPSS P94 sadece lise mezuniyeti düzeyinde alınmışsa geçerlidir
+      if (user.kpss_type !== 'KPSSP94') {
+        isMaybe = true;
+        reasons.push(`Bu kadro ortaöğretim/lise düzeyindedir.`);
+      }
+    }
   }
 
   // 2. BÖLÜM
@@ -132,7 +159,23 @@ export function evaluateMatch(
     }
   }
 
-  // 4. YAŞ KONTROLÜ
+  // 4. ALES PUANI KONTROLÜ
+  let alesMatch = true;
+  if (position.min_ales_score && position.min_ales_score > 0) {
+    if (user.ales_score && user.ales_score > 0) {
+      if (user.ales_score < position.min_ales_score) {
+        isUnfit = true;
+        alesMatch = false;
+        reasons.push(`ALES puanınız (${user.ales_score}), istenen taban puanın (${position.min_ales_score}) altındadır.`);
+      }
+    } else {
+      isMaybe = true;
+      alesMatch = false;
+      reasons.push(`Bu ilan en az ${position.min_ales_score} ALES puanı istemektedir; profilinizde ALES girilmemiş.`);
+    }
+  }
+
+  // 5. YAŞ KONTROLÜ
   let ageMatch = true;
   const userAge = calculateAge(user.birth_date);
   if (position.max_age && position.max_age > 0) {
@@ -144,11 +187,11 @@ export function evaluateMatch(
       }
     } else {
       isMaybe = true;
-      reasons.push(`İlanda ${position.max_age} yaş sınırı var, profilinizde doğum tarihiniz eksik.`);
+      reasons.push(`İlanda ${position.max_age} yaş sınırı var, profilinizde doğum tarihiniz girilmemiş.`);
     }
   }
 
-  // 5. CİNSİYET
+  // 6. CİNSİYET
   let genderMatch = true;
   if (position.gender_requirement !== 'HEPSI' && user.gender && user.gender !== 'BELIRTILMEMIS') {
     if (user.gender !== position.gender_requirement) {
@@ -158,34 +201,38 @@ export function evaluateMatch(
     }
   }
 
-  // 6. YDS KONTROLÜ
+  // 7. YABANCI DİL (YDS / YÖKDİL) KONTROLÜ
   let ydsMatch = true;
   if (position.min_yds_level !== 'YOK') {
-    const requiredWeight = YDS_WEIGHTS[position.min_yds_level] || 0;
-    const userWeight = YDS_WEIGHTS[user.yds_level || 'YOK'] || 0;
+    const effectiveUserLevel = user.yds_level && user.yds_level !== 'YOK' 
+      ? user.yds_level 
+      : scoreToYdsLevel(user.yds_score);
 
-    if (!user.yds_level || user.yds_level === 'YOK') {
+    const requiredWeight = YDS_WEIGHTS[position.min_yds_level] || 0;
+    const userWeight = YDS_WEIGHTS[effectiveUserLevel] || 0;
+
+    if (userWeight === 0) {
       isMaybe = true;
       ydsMatch = false;
-      reasons.push(`En az ${position.min_yds_level} düzeyinde YDS isteniyor, profilinizde YDS bilgisi boş.`);
+      reasons.push(`En az ${position.min_yds_level} düzeyinde yabancı dil (YDS/YÖKDİL) isteniyor; profilinizde dil puanı boş.`);
     } else if (userWeight < requiredWeight) {
       isUnfit = true;
       ydsMatch = false;
-      reasons.push(`YDS seviyeniz (${user.yds_level}), istenen (${position.min_yds_level}) seviyesinin altındadır.`);
+      reasons.push(`Yabancı dil seviyeniz (${effectiveUserLevel}), istenen (${position.min_yds_level}) düzeyinin altındadır.`);
     }
   }
 
-  // 7. MEZUNİYET DURUMU
+  // 8. MEZUNİYET DURUMU
   let gradMatch = true;
   let gradMsg = 'Mezun';
   if (user.graduation_status === 'OGRENCI') {
     isMaybe = true;
     gradMatch = false;
     gradMsg = 'Öğrenci';
-    reasons.push('Halen öğrencisiniz. Başvuru son gününe kadar mezun olmanız gerekebilir.');
+    reasons.push('Halen öğrencisiniz. Son başvuru tarihine kadar mezun olunması gerekebilir.');
   }
 
-  // 8. ÖZEL ŞARTLAR / SERTİFİKALAR
+  // 9. ÖZEL ŞARTLAR / SERTİFİKALAR
   const pendingConditions: string[] = [];
   if (position.special_conditions && position.special_conditions.length > 0) {
     const userCerts = (user.certificates || []).map(normalizeTurkish);
@@ -237,9 +284,14 @@ export function evaluateMatch(
         user: `${user.kpss_type || 'Girilmedi'} (${user.kpss_score || 0})`,
         required: position.kpss_type === 'KPSS_YOK' ? 'Şart Yok' : `${position.kpss_type} ≥ ${position.min_kpss_score}`,
       },
+      ales: position.min_ales_score ? {
+        match: alesMatch,
+        user: user.ales_score ? `${user.ales_type || 'ALES'}: ${user.ales_score}` : 'Girilmedi',
+        required: `ALES ≥ ${position.min_ales_score}`,
+      } : undefined,
       yds: {
         match: ydsMatch,
-        user: user.yds_level || 'YOK',
+        user: user.yds_score ? `${user.yds_score} Puan (${scoreToYdsLevel(user.yds_score)})` : (user.yds_level || 'YOK'),
         required: position.min_yds_level,
       },
       age: {
