@@ -149,8 +149,10 @@ export default function HomePage() {
   const filteredList = useMemo(() => {
     let list = evaluatedAnnouncements.filter((item) => {
       // 1. Sadece Bana Uygunlar
-      if (onlySuitable && hasProfileFilled) {
-        if (item.matchSummary.suitableCount === 0) return false;
+      if (onlySuitable) {
+        if (!hasProfileFilled) return true;
+        const isEligible = item.matchSummary.suitableCount > 0 || item.matchSummary.maybeCount > 0;
+        if (!isEligible) return false;
       }
 
       // 2. Metin Arama

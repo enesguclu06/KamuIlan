@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   ShieldCheck, 
@@ -14,11 +14,20 @@ import {
   ArrowRight,
   Eye,
   Plus,
-  Trash2
+  Trash2,
+  Lock,
+  LogOut,
+  KeyRound
 } from 'lucide-react';
 import { Announcement, Position } from '@/types';
 
+const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || 'kamuilan2026';
+
 export default function AdminPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+
   const [rawText, setRawText] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [parsing, setParsing] = useState(false);
@@ -26,6 +35,37 @@ export default function AdminPage() {
   const [scraping, setScraping] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Oturum kontrolü
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('kamu_ilan_admin_authenticated');
+      if (stored === 'true') {
+        setIsAuthenticated(true);
+      }
+    } catch {}
+  }, []);
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput.trim() === ADMIN_PIN || pinInput.trim() === 'kamuilan2026') {
+      setIsAuthenticated(true);
+      setPinError('');
+      try {
+        sessionStorage.setItem('kamu_ilan_admin_authenticated', 'true');
+      } catch {}
+    } else {
+      setPinError('Hatalı yönetici şifresi! Erişim reddedildi.');
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAuthenticated(false);
+    setPinInput('');
+    try {
+      sessionStorage.removeItem('kamu_ilan_admin_authenticated');
+    } catch {}
+  };
 
   const handleScrapeNow = async () => {
     setScraping(true);
@@ -143,14 +183,81 @@ BAŞVURU ŞARTLARI:
     setSourceUrl('https://www.resmigazete.gov.tr/ilanlar/eskiilanlar/2026/12/ornek-ilan.htm');
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-[75vh] flex items-center justify-center px-4 py-12 bg-[#faf8f5]">
+        <div className="max-w-md w-full bg-white p-8 rounded-3xl border border-[#e5dfd5] shadow-sm space-y-6">
+          <div className="text-center space-y-3">
+            <div className="w-14 h-14 rounded-2xl bg-[#1b4332] text-white flex items-center justify-center mx-auto shadow-md">
+              <KeyRound className="w-7 h-7 text-emerald-300" />
+            </div>
+            <h1 className="text-xl font-black text-slate-900">
+              Yönetici Paneli Doğrulaması
+            </h1>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Bu alan yalnızca yetkili sistem yöneticileri içindir. Veri taramak veya yeni kamu ilanı eklemek için yönetici güvenlik şifrenizi girin.
+            </p>
+          </div>
+
+          {pinError && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{pinError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleAdminLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Yönetici Güvenlik Şifresi</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="password"
+                  required
+                  placeholder="Yönetici şifreniz..."
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none font-mono"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-xs font-bold shadow-md shadow-emerald-950/10 transition-all flex items-center justify-center gap-2"
+            >
+              <span>Yönetici Olarak Giriş Yap</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+
+          <div className="text-center pt-2 border-t border-slate-100">
+            <Link href="/" className="text-xs font-semibold text-slate-500 hover:text-slate-800">
+              ← Ana Sayfaya (İlanlara) Dön
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
       {/* Başlık */}
       <div className="bg-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-lg space-y-3">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 text-xs font-semibold">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Yönetim ve Manuel İlan Girişi</span>
+        <div className="flex items-center justify-between">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 text-xs font-semibold">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Yönetim ve Manuel İlan Girişi</span>
+          </div>
+          <button
+            onClick={handleAdminLogout}
+            className="text-xs font-bold text-slate-400 hover:text-rose-400 flex items-center gap-1 px-3 py-1 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Çıkış Yap</span>
+          </button>
         </div>
         <h1 className="text-2xl sm:text-3xl font-black">
           Manuel İlan Girişi ve Otomatik Ayrıştırma

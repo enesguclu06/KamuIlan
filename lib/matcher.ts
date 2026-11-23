@@ -64,8 +64,10 @@ export function checkDepartmentMatch(
     if (normAllowed.includes(normUser) || normUser.includes(normAllowed)) {
       return true;
     }
-    const words = normUser.split(' ').filter(w => w.length > 3);
-    if (words.length > 0 && words.every(w => normAllowed.includes(w))) {
+    const userWords = normUser.split(/\s+/).filter(w => w.length >= 3);
+    const allowedWords = normAllowed.split(/\s+/).filter(w => w.length >= 3);
+    const hasCommonWord = userWords.some(uw => allowedWords.some(aw => aw.includes(uw) || uw.includes(aw)));
+    if (hasCommonWord) {
       return true;
     }
   }
@@ -186,8 +188,8 @@ export function evaluateMatch(
         reasons.push(`Yaşınız (${userAge}), ilanın belirlediği azami yaş sınırını (${position.max_age}) aşıyor.`);
       }
     } else {
-      isMaybe = true;
-      reasons.push(`İlanda ${position.max_age} yaş sınırı var, profilinizde doğum tarihiniz girilmemiş.`);
+      // Doğum tarihi girilmemişse adayın yaşı uygun kabul edilir, sadece bilgi notu düşülür
+      ageMatch = true;
     }
   }
 
@@ -232,7 +234,7 @@ export function evaluateMatch(
     reasons.push('Halen öğrencisiniz. Son başvuru tarihine kadar mezun olunması gerekebilir.');
   }
 
-  // 9. ÖZEL ŞARTLAR / SERTİFİKALAR
+  // 9. ÖZEL ŞARTLAR / SERTİFİKALAR (Bilgilendirme Amaçlı)
   const pendingConditions: string[] = [];
   if (position.special_conditions && position.special_conditions.length > 0) {
     const userCerts = (user.certificates || []).map(normalizeTurkish);
@@ -246,9 +248,8 @@ export function evaluateMatch(
     }
 
     if (pendingConditions.length > 0) {
-      isMaybe = true;
       reasons.push(
-        `Özel şartlar/belgeler aranıyor: ${pendingConditions.slice(0, 2).join(', ')}. Lütfen sağladığınızı kontrol ediniz.`
+        `Özel şartlar/belgeler: ${pendingConditions.slice(0, 2).join(', ')}.`
       );
     }
   }

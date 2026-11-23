@@ -29,12 +29,18 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
-  const navLinks = [
-    { href: '/', label: 'İlanlar', icon: Compass },
-    { href: '/tanitim', label: 'Tanıtım', icon: Sparkles },
-    { href: '/profil', label: 'Kriterlerim & CV', icon: UserCheck },
-    { href: '/admin', label: 'İlan Ekle / Tara', icon: PlusCircle },
-  ];
+  const isUserActive = isLoggedIn || hasProfileFilled;
+
+  const navLinks = isUserActive
+    ? [
+        { href: '/', label: 'İlanlar', icon: Compass },
+        { href: '/profil', label: 'Kriterlerim & CV', icon: UserCheck },
+      ]
+    : [
+        { href: '/', label: 'İlanlar', icon: Compass },
+        { href: '/tanitim', label: 'Tanıtım', icon: Sparkles },
+        { href: '/profil', label: 'Kriterlerimi Gir', icon: UserCheck },
+      ];
 
   const displayName = profile?.full_name || (isLoggedIn ? 'Kullanıcı' : 'Enes Güçlü');
 
@@ -123,6 +129,15 @@ export function Navbar() {
                   >
                     <Heart className="w-3.5 h-3.5 text-rose-500" />
                     Favori İlanlarım
+                  </Link>
+                  <div className="border-t border-slate-100 my-1" />
+                  <Link
+                    href="/admin"
+                    onClick={() => setUserDropdownOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 text-slate-500 font-semibold text-[11px]"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
+                    Yönetici Girişi
                   </Link>
                   <div className="border-t border-slate-100 my-1" />
                   {isLoggedIn ? (
