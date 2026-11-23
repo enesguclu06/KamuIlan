@@ -75,8 +75,8 @@ export default function HomePage() {
   const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>([]);
   const [selectedExamType, setSelectedExamType] = useState<string>('');
   const [selectedEduLevel, setSelectedEduLevel] = useState<string>('');
-  type EligibilityFilter = 'ALL' | 'SUITABLE' | 'MAYBE';
-  const [eligibilityFilter, setEligibilityFilter] = useState<EligibilityFilter>('ALL');
+  const [filterSuitable, setFilterSuitable] = useState(false);
+  const [filterMaybe, setFilterMaybe] = useState(false);
   const [onlyUpcoming, setOnlyUpcoming] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [sortOption, setSortOption] = useState<'DEADLINE' | 'NEWEST' | 'QUOTA'>('DEADLINE');
@@ -168,14 +168,24 @@ export default function HomePage() {
         return false;
       }
 
-      // 1. Uygunluk Filtresi (Tümü / Tam Bana Uygun / Belki Uygun)
-      if (eligibilityFilter === 'SUITABLE') {
-        if (!hasProfileFilled) return true;
-        if (item.matchSummary.suitableCount === 0) return false;
-      } else if (eligibilityFilter === 'MAYBE') {
-        if (!hasProfileFilled) return true;
-        // Tam uymayan ama özel şart/belge bekleyen kadrolar
-        if (item.matchSummary.maybeCount === 0) return false;
+      // 1. Uygunluk Filtresi (Bağımsız Çoklu Seçim: Tam Uygun / Belki Uygun / İkisi Birlikte)
+      if (hasProfileFilled) {
+        if (filterSuitable && filterMaybe) {
+          // İkisi de seçiliyse: ya Tam Uygun ya da Belki Uygun olanlar listelenir
+          if (item.matchSummary.suitableCount === 0 && item.matchSummary.maybeCount === 0) {
+            return false;
+          }
+        } else if (filterSuitable) {
+          // Yalnızca Tam Uygun olanlar
+          if (item.matchSummary.suitableCount === 0) {
+            return false;
+          }
+        } else if (filterMaybe) {
+          // Yalnızca Belki Uygun olanlar
+          if (item.matchSummary.maybeCount === 0) {
+            return false;
+          }
+        }
       }
 
       // 2. Metin Arama (Kurum, Başlık, Kadro, Şehir, Başvuru Yöntemi, Özet)
@@ -229,7 +239,7 @@ export default function HomePage() {
     }
 
     return list;
-  }, [evaluatedAnnouncements, onlyFavorites, favorites, onlyUpcoming, eligibilityFilter, hasProfileFilled, searchQuery, selectedCities, selectedEduLevel, selectedExamType, sortOption]);
+  }, [evaluatedAnnouncements, onlyFavorites, favorites, onlyUpcoming, filterSuitable, filterMaybe, hasProfileFilled, searchQuery, selectedCities, selectedEduLevel, selectedExamType, sortOption]);
 
   const totalPositionsCount = useMemo(() => {
     return announcements.reduce((sum, a) => sum + (a.positions || []).reduce((s, p) => s + p.quota, 0), 0);
@@ -430,28 +440,28 @@ export default function HomePage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setEligibilityFilter(eligibilityFilter === 'SUITABLE' ? 'ALL' : 'SUITABLE')}
+                onClick={() => setFilterSuitable(!filterSuitable)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                  eligibilityFilter === 'SUITABLE'
-                    ? 'bg-[#1b4332] text-white shadow-sm'
+                  filterSuitable
+                    ? 'bg-[#1b4332] text-white shadow-sm ring-2 ring-emerald-400'
                     : 'bg-emerald-50 border border-emerald-200 text-[#1b4332] hover:bg-emerald-100'
                 }`}
               >
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <CheckCircle2 className={`w-3.5 h-3.5 ${filterSuitable ? 'text-emerald-300' : 'text-emerald-600'}`} />
                 <span className="font-bold">SANA TAM UYGUN:</span>
                 <span className="font-bold font-mono">{suitableAnnouncementsCount} İlan</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setEligibilityFilter(eligibilityFilter === 'MAYBE' ? 'ALL' : 'MAYBE')}
+                onClick={() => setFilterMaybe(!filterMaybe)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                  eligibilityFilter === 'MAYBE'
-                    ? 'bg-amber-600 text-white shadow-sm'
+                  filterMaybe
+                    ? 'bg-amber-600 text-white shadow-sm ring-2 ring-amber-400'
                     : 'bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100'
                 }`}
               >
-                <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
+                <HelpCircle className={`w-3.5 h-3.5 ${filterMaybe ? 'text-amber-200' : 'text-amber-600'}`} />
                 <span className="font-bold">BELKİ UYGUN (ÖZEL ŞARTLI):</span>
                 <span className="font-bold font-mono">{maybeAnnouncementsCount} İlan</span>
               </button>
@@ -478,16 +488,19 @@ export default function HomePage() {
               <div className="space-y-1.5">
                 <button
                   type="button"
-                  onClick={() => setEligibilityFilter('ALL')}
+                  onClick={() => {
+                    setFilterSuitable(false);
+                    setFilterMaybe(false);
+                  }}
                   className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
-                    eligibilityFilter === 'ALL'
+                    !filterSuitable && !filterMaybe
                       ? 'bg-slate-900 text-white shadow-sm'
                       : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
                   }`}
                 >
                   <span>Tüm Açık İlanlar</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                    eligibilityFilter === 'ALL' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                    !filterSuitable && !filterMaybe ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {announcements.length}
                   </span>
@@ -500,20 +513,20 @@ export default function HomePage() {
                       router.push('/profil');
                       return;
                     }
-                    setEligibilityFilter(eligibilityFilter === 'SUITABLE' ? 'ALL' : 'SUITABLE');
+                    setFilterSuitable(!filterSuitable);
                   }}
                   className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
-                    eligibilityFilter === 'SUITABLE'
-                      ? 'bg-[#1b4332] text-white shadow-md'
+                    filterSuitable
+                      ? 'bg-[#1b4332] text-white shadow-md ring-2 ring-emerald-400/60'
                       : 'bg-emerald-50 hover:bg-emerald-100/80 text-[#1b4332] border border-emerald-200'
                   }`}
                 >
                   <div className="flex items-center gap-1.5">
-                    <CheckCircle2 className={`w-3.5 h-3.5 ${eligibilityFilter === 'SUITABLE' ? 'text-emerald-300' : 'text-emerald-600'}`} />
+                    <CheckCircle2 className={`w-3.5 h-3.5 ${filterSuitable ? 'text-emerald-300' : 'text-emerald-600'}`} />
                     <span>Tam Bana Uygun</span>
                   </div>
                   <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                    eligibilityFilter === 'SUITABLE' ? 'bg-white/20 text-white' : 'bg-white text-[#1b4332]'
+                    filterSuitable ? 'bg-white/20 text-white' : 'bg-white text-[#1b4332]'
                   }`}>
                     {hasProfileFilled ? `${suitableAnnouncementsCount} İlan` : 'Kriter Belirle'}
                   </span>
@@ -526,20 +539,20 @@ export default function HomePage() {
                       router.push('/profil');
                       return;
                     }
-                    setEligibilityFilter(eligibilityFilter === 'MAYBE' ? 'ALL' : 'MAYBE');
+                    setFilterMaybe(!filterMaybe);
                   }}
                   className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
-                    eligibilityFilter === 'MAYBE'
-                      ? 'bg-amber-600 text-white shadow-md'
+                    filterMaybe
+                      ? 'bg-amber-600 text-white shadow-md ring-2 ring-amber-400/60'
                       : 'bg-amber-50 hover:bg-amber-100/80 text-amber-900 border border-amber-200'
                   }`}
                 >
                   <div className="flex items-center gap-1.5">
-                    <HelpCircle className={`w-3.5 h-3.5 ${eligibilityFilter === 'MAYBE' ? 'text-amber-200' : 'text-amber-600'}`} />
+                    <HelpCircle className={`w-3.5 h-3.5 ${filterMaybe ? 'text-amber-200' : 'text-amber-600'}`} />
                     <span>Belki Uygun (Özel Şartlı)</span>
                   </div>
                   <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                    eligibilityFilter === 'MAYBE' ? 'bg-white/20 text-white' : 'bg-white text-amber-900'
+                    filterMaybe ? 'bg-white/20 text-white' : 'bg-white text-amber-900'
                   }`}>
                     {hasProfileFilled ? `${maybeAnnouncementsCount} İlan` : 'Kriter Belirle'}
                   </span>
@@ -720,7 +733,9 @@ export default function HomePage() {
                 setSelectedCities([]);
                 setSelectedEduLevel('');
                 setSelectedExamType('');
-                setEligibilityFilter('ALL');
+                setFilterSuitable(false);
+                setFilterMaybe(false);
+                setOnlyFavorites(false);
                 setOnlyUpcoming(false);
                 setSearchQuery('');
               }}

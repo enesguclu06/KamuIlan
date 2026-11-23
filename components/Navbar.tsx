@@ -27,6 +27,53 @@ export function Navbar() {
   const { profile, hasProfileFilled, isLoggedIn, userEmail, logout, favorites } = useUserProfile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
+
+  const NOTIFICATIONS = [
+    {
+      id: 'notif-1',
+      title: 'İçişleri Bakanlığı Başvuru Takvimi',
+      desc: '1.608 Personel alımı başvuruları 7 Aralık tarihinde Kariyer Kapısı üzerinden açılacaktır.',
+      tag: 'Gelecek İlan',
+      time: 'Bugün',
+      href: '/ilan/ann-icisleri-2',
+      color: 'blue',
+      unread: true,
+    },
+    {
+      id: 'notif-2',
+      title: 'EGO Otobüs Şoförü Alımı',
+      desc: '150 Otobüs Şoförü ve Destek Elemanı alımı için son başvuruya 11 gün kaldı!',
+      tag: 'Son Başvuru',
+      time: '2 saat önce',
+      href: '/ilan/ann-ego-1',
+      color: 'amber',
+      unread: true,
+    },
+    {
+      id: 'notif-3',
+      title: 'KPSS 2026/2 Tercih Kılavuzu',
+      desc: 'ÖSYM merkezi yerleştirme tercih kılavuzu ve branş bazında sıralamalar yayımlandı.',
+      tag: 'ÖSYM Kılavuz',
+      time: 'Dün',
+      href: '/',
+      color: 'emerald',
+      unread: true,
+    },
+    {
+      id: 'notif-4',
+      title: 'Bursa Büyükşehir İtfaiye Eri',
+      desc: '75 İtfaiye Eri alımında erkekler için asgari 167 cm boy şartı aranmaktadır.',
+      tag: 'Şart Güncellemesi',
+      time: '2 gün önce',
+      href: '/ilan/ann-bursa-1',
+      color: 'purple',
+      unread: false,
+    },
+  ];
+
+  const unreadCount = NOTIFICATIONS.filter(n => !readNotificationIds.includes(n.id) && n.unread).length;
 
   const isUserActive = isLoggedIn || hasProfileFilled;
 
@@ -95,24 +142,123 @@ export function Navbar() {
               )}
             </Link>
 
-            {/* Bildirim Çanı */}
-            <button
-              type="button"
-              className="relative p-2 rounded-full hover:bg-[#ece7df] text-slate-600 transition-colors"
-              title="Bildirimler"
-            >
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] font-black flex items-center justify-center">
-                19
-              </span>
-            </button>
+            {/* Bildirim Çanı & Popover */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setNotificationsOpen(!notificationsOpen);
+                  if (userDropdownOpen) setUserDropdownOpen(false);
+                }}
+                className={`relative p-2 rounded-full transition-colors ${
+                  notificationsOpen ? 'bg-[#ece7df] text-slate-900' : 'hover:bg-[#ece7df] text-slate-600'
+                }`}
+                title="Bildirimler"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] font-black flex items-center justify-center animate-pulse">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notificationsOpen && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 py-3 z-50 text-xs">
+                  {/* Başlık */}
+                  <div className="px-4 pb-2.5 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-slate-900 text-sm">Bildirimler</span>
+                      {unreadCount > 0 && (
+                        <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">
+                          {unreadCount} Yeni
+                        </span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setReadNotificationIds(NOTIFICATIONS.map(n => n.id))}
+                        className="text-[11px] text-[#1b4332] font-bold hover:underline"
+                      >
+                        Tümünü Okundu Say
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Bildirim Listesi */}
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                    {NOTIFICATIONS.map((notif) => {
+                      const isRead = readNotificationIds.includes(notif.id) || !notif.unread;
+                      return (
+                        <Link
+                          key={notif.id}
+                          href={notif.href}
+                          onClick={() => {
+                            if (!readNotificationIds.includes(notif.id)) {
+                              setReadNotificationIds(prev => [...prev, notif.id]);
+                            }
+                            setNotificationsOpen(false);
+                          }}
+                          className={`block p-3.5 hover:bg-slate-50 transition-colors ${
+                            !isRead ? 'bg-amber-50/40' : ''
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="font-bold text-slate-900 text-xs">
+                              {notif.title}
+                            </span>
+                            <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                              {notif.time}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 mt-1 line-clamp-2 leading-relaxed">
+                            {notif.desc}
+                          </p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${
+                              notif.color === 'blue'
+                                ? 'bg-blue-100 text-blue-800'
+                                : notif.color === 'amber'
+                                ? 'bg-amber-100 text-amber-900'
+                                : notif.color === 'emerald'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-purple-100 text-purple-800'
+                            }`}>
+                              {notif.tag}
+                            </span>
+                            {!isRead && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            )}
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+
+                  {/* Alt Bilgi */}
+                  <div className="pt-2 px-4 border-t border-slate-100 text-center">
+                    <Link
+                      href="/"
+                      onClick={() => setNotificationsOpen(false)}
+                      className="text-[11px] font-bold text-[#1b4332] hover:underline"
+                    >
+                      Tüm Güncel İlanları Görüntüle →
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {isUserActive ? (
               /* Kullanıcı / Aday Menüsü */
               <div className="relative">
                 <button
                   type="button"
-                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  onClick={() => {
+                    setUserDropdownOpen(!userDropdownOpen);
+                    if (notificationsOpen) setNotificationsOpen(false);
+                  }}
                   className="flex items-center gap-2 py-1.5 px-3 rounded-full hover:bg-[#ece7df] text-xs font-bold text-slate-800 transition-colors border border-transparent hover:border-[#e5dfd5]"
                 >
                   <div className="w-7 h-7 rounded-full bg-[#1b4332] text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
@@ -240,6 +386,43 @@ export function Navbar() {
             </Link>
           ))}
           <div className="pt-2 border-t border-[#ece7df] flex flex-col gap-2">
+            {/* Mobil Bildirimler */}
+            <button
+              type="button"
+              onClick={() => setNotificationsOpen(!notificationsOpen)}
+              className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-amber-50/70 border border-amber-200"
+            >
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-amber-600" />
+                <span>Bildirimler & Son Gelişmeler</span>
+              </div>
+              {unreadCount > 0 && (
+                <span className="text-[10px] bg-amber-200 text-amber-900 font-mono px-2 py-0.5 rounded-full">
+                  {unreadCount} Yeni
+                </span>
+              )}
+            </button>
+            {notificationsOpen && (
+              <div className="bg-white rounded-xl border border-slate-200 p-2 space-y-2 max-h-60 overflow-y-auto">
+                {NOTIFICATIONS.map((notif) => (
+                  <Link
+                    key={notif.id}
+                    href={notif.href}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setNotificationsOpen(false);
+                    }}
+                    className="block p-2 rounded-lg hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-slate-900">{notif.title}</span>
+                      <span className="text-[9px] text-slate-400">{notif.time}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-600 line-clamp-1 mt-0.5">{notif.desc}</p>
+                  </Link>
+                ))}
+              </div>
+            )}
             <Link
               href="/favoriler"
               onClick={() => setMobileMenuOpen(false)}
