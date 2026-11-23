@@ -1,0 +1,59 @@
+name: Günlük Kamu İlan Tarayıcısı ve Bildirim Dağıtımı
+
+on:
+  schedule:
+    # Her gün 08:30 ve 18:30 TSİ (05:30 ve 15:30 UTC)
+    - cron: '30 5,15 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Taranacak Maksimum Yeni İlan Sayısı'
+        required: false
+        default: '10'
+      dry_run:
+        description: 'Dry Run (Sadece test, DB ve bildirim yok)'
+        required: false
+        type: boolean
+        default: false
+      test_url:
+        description: 'Belirli bir ilan linkini test et (Opsiyonel)'
+        required: false
+        default: ''
+
+jobs:
+  scrape-and-notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Kodu Çek (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Python 3.11 Kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Python Bağımlılıklarını Yükle
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scraper/requirements.txt
+
+      - name: Scraper ve AI Parser Pipeline Çalıştır
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://kamu-ilan.vercel.app' }}
+          GEMINI_MODEL_NAME: 'gemini-2.5-flash'
+        run: |
+          ARGS="--limit ${{ github.event.inputs.limit || '10' }}"
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ -n "${{ github.event.inputs.test_url }}" ]; then
+            ARGS="$ARGS --url ${{ github.event.inputs.test_url }}"
+          fi
+          python scraper/main.py $ARGS
