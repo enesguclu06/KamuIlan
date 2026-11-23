@@ -287,8 +287,9 @@ export function evaluateMatch(
     }
 
     if (pendingConditions.length > 0) {
+      isMaybe = true;
       reasons.push(
-        `Özel şartlar/belgeler: ${pendingConditions.slice(0, 2).join(', ')}.`
+        `Özel şart/belge aranmaktadır: ${pendingConditions.slice(0, 2).join(', ')}`
       );
     }
   }

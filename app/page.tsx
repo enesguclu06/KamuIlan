@@ -28,7 +28,8 @@ import {
   Sparkles,
   ChevronDown,
   Info,
-  Lock
+  Lock,
+  AlertTriangle
 } from 'lucide-react';
 import { Announcement, Position, MatchStatus } from '@/types';
 import { SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
@@ -71,7 +72,8 @@ export default function HomePage() {
   const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>([]);
   const [selectedExamType, setSelectedExamType] = useState<string>('');
   const [selectedEduLevel, setSelectedEduLevel] = useState<string>('');
-  const [onlySuitable, setOnlySuitable] = useState(false);
+  type EligibilityFilter = 'ALL' | 'SUITABLE' | 'MAYBE';
+  const [eligibilityFilter, setEligibilityFilter] = useState<EligibilityFilter>('ALL');
   const [sortOption, setSortOption] = useState<'DEADLINE' | 'NEWEST' | 'QUOTA'>('DEADLINE');
   const [activeStatTab, setActiveStatTab] = useState<'ANNOUNCEMENTS' | 'POSITIONS' | 'INSTITUTIONS'>('ANNOUNCEMENTS');
 
@@ -165,11 +167,14 @@ export default function HomePage() {
   // Filtreleme Mantığı
   const filteredList = useMemo(() => {
     let list = evaluatedAnnouncements.filter((item) => {
-      // 1. Sadece Bana Uygunlar
-      if (onlySuitable) {
+      // 1. Uygunluk Filtresi (Tümü / Tam Bana Uygun / Belki Uygun)
+      if (eligibilityFilter === 'SUITABLE') {
         if (!hasProfileFilled) return true;
-        const isEligible = item.matchSummary.suitableCount > 0 || item.matchSummary.bestStatus === 'BELKI';
-        if (!isEligible) return false;
+        if (item.matchSummary.suitableCount === 0) return false;
+      } else if (eligibilityFilter === 'MAYBE') {
+        if (!hasProfileFilled) return true;
+        // Tam uymayan ama özel şart/belge bekleyen kadrolar
+        if (item.matchSummary.maybeCount === 0) return false;
       }
 
       // 2. Metin Arama
@@ -219,7 +224,7 @@ export default function HomePage() {
     }
 
     return list;
-  }, [evaluatedAnnouncements, onlySuitable, hasProfileFilled, searchQuery, selectedCities, selectedEduLevel, selectedExamType, sortOption]);
+  }, [evaluatedAnnouncements, eligibilityFilter, hasProfileFilled, searchQuery, selectedCities, selectedEduLevel, selectedExamType, sortOption]);
 
   const totalPositionsCount = useMemo(() => {
     return announcements.reduce((sum, a) => sum + (a.positions || []).reduce((s, p) => s + p.quota, 0), 0);
@@ -245,6 +250,11 @@ export default function HomePage() {
   const suitableAnnouncementsCount = useMemo(() => {
     if (!hasProfileFilled) return 0;
     return evaluatedAnnouncements.filter(a => a.matchSummary.suitableCount > 0).length;
+  }, [evaluatedAnnouncements, hasProfileFilled]);
+
+  const maybeAnnouncementsCount = useMemo(() => {
+    if (!hasProfileFilled) return 0;
+    return evaluatedAnnouncements.filter(a => a.matchSummary.maybeCount > 0).length;
   }, [evaluatedAnnouncements, hasProfileFilled]);
 
   // Şehir listesi ve arama
@@ -379,9 +389,34 @@ export default function HomePage() {
           </div>
 
           {hasProfileFilled && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-[#1b4332]">
-              <span className="text-emerald-700 font-bold">SANA UYGUN:</span>
-              <span className="font-bold font-mono text-[#1b4332]">{suitableAnnouncementsCount} İlan</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setEligibilityFilter(eligibilityFilter === 'SUITABLE' ? 'ALL' : 'SUITABLE')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                  eligibilityFilter === 'SUITABLE'
+                    ? 'bg-[#1b4332] text-white shadow-sm'
+                    : 'bg-emerald-50 border border-emerald-200 text-[#1b4332] hover:bg-emerald-100'
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="font-bold">SANA TAM UYGUN:</span>
+                <span className="font-bold font-mono">{suitableAnnouncementsCount} İlan</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setEligibilityFilter(eligibilityFilter === 'MAYBE' ? 'ALL' : 'MAYBE')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                  eligibilityFilter === 'MAYBE'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100'
+                }`}
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
+                <span className="font-bold">BELKİ UYGUN (ÖZEL ŞARTLI):</span>
+                <span className="font-bold font-mono">{maybeAnnouncementsCount} İlan</span>
+              </button>
             </div>
           )}
 
@@ -399,31 +434,82 @@ export default function HomePage() {
           {/* SOL FİLTRELEME PANELİ (3 KOLON) */}
           <aside className="lg:col-span-3 bg-white p-5 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-6 sticky top-20">
             
-            {/* 1. BANA UYGUNLAR TOGGLE BUTONU */}
-            <button
-              type="button"
-              onClick={() => {
-                if (!hasProfileFilled) {
-                  alert('Lütfen önce profilinizdeki bölüm ve sınav puanı kriterlerinizi kaydedin.');
-                  window.location.href = '/profil';
-                  return;
-                }
-                setOnlySuitable(!onlySuitable);
-              }}
-              className={`w-full p-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
-                onlySuitable
-                  ? 'bg-[#1b4332] text-white shadow-md'
-                  : 'bg-emerald-50 hover:bg-emerald-100 text-[#1b4332] border border-emerald-200'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className={`w-4 h-4 ${onlySuitable ? 'text-emerald-300' : 'text-emerald-600'}`} />
-                <span>Bana Uygun İlanlar</span>
+            {/* 1. UYGUNLUK DURUMU (3 SEÇENEKLİ FİLTRE) */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">UYGUNLUK DURUMU</span>
+              <div className="space-y-1.5">
+                <button
+                  type="button"
+                  onClick={() => setEligibilityFilter('ALL')}
+                  className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
+                    eligibilityFilter === 'ALL'
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  <span>Tüm Açık İlanlar</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                    eligibilityFilter === 'ALL' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {announcements.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!hasProfileFilled) {
+                      alert('Lütfen önce profilinizdeki bölüm ve sınav puanı kriterlerinizi kaydedin.');
+                      window.location.href = '/profil';
+                      return;
+                    }
+                    setEligibilityFilter(eligibilityFilter === 'SUITABLE' ? 'ALL' : 'SUITABLE');
+                  }}
+                  className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
+                    eligibilityFilter === 'SUITABLE'
+                      ? 'bg-[#1b4332] text-white shadow-md'
+                      : 'bg-emerald-50 hover:bg-emerald-100/80 text-[#1b4332] border border-emerald-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className={`w-3.5 h-3.5 ${eligibilityFilter === 'SUITABLE' ? 'text-emerald-300' : 'text-emerald-600'}`} />
+                    <span>Tam Bana Uygun</span>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                    eligibilityFilter === 'SUITABLE' ? 'bg-white/20 text-white' : 'bg-white text-[#1b4332]'
+                  }`}>
+                    {hasProfileFilled ? `${suitableAnnouncementsCount} İlan` : 'Giriş Yap'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!hasProfileFilled) {
+                      alert('Lütfen önce profilinizdeki bölüm ve sınav puanı kriterlerinizi kaydedin.');
+                      window.location.href = '/profil';
+                      return;
+                    }
+                    setEligibilityFilter(eligibilityFilter === 'MAYBE' ? 'ALL' : 'MAYBE');
+                  }}
+                  className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
+                    eligibilityFilter === 'MAYBE'
+                      ? 'bg-amber-600 text-white shadow-md'
+                      : 'bg-amber-50 hover:bg-amber-100/80 text-amber-900 border border-amber-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <HelpCircle className={`w-3.5 h-3.5 ${eligibilityFilter === 'MAYBE' ? 'text-amber-200' : 'text-amber-600'}`} />
+                    <span>Belki Uygun (Özel Şartlı)</span>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                    eligibilityFilter === 'MAYBE' ? 'bg-white/20 text-white' : 'bg-white text-amber-900'
+                  }`}>
+                    {hasProfileFilled ? `${maybeAnnouncementsCount} İlan` : 'Giriş Yap'}
+                  </span>
+                </button>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-white text-slate-800 font-bold">
-                {hasProfileFilled ? (onlySuitable ? 'Filtre Aktif' : `${suitableAnnouncementsCount} İlan Uygun`) : 'Kriter Gir'}
-              </span>
-            </button>
+            </div>
 
             {/* 2. İL FİLTRESİ (ARAMALI VE CHECKBOX'LI) */}
             <div className="space-y-2">
@@ -511,6 +597,7 @@ export default function HomePage() {
                   { key: 'KPSS_PUAN_USTUNLUGU', label: 'Mülakatsız (Doğrudan KPSS)' },
                   { key: 'MULAKAT', label: 'Mülakat / Sözlü Sınav' },
                   { key: 'UYGULAMALI', label: 'Uygulamalı Sınav (Klavye/Parkur)' },
+                  { key: 'KURUM_SINAVI', label: 'Yazılı Kurum Sınavı' },
                 ].map((item) => (
                   <label
                     key={item.key}
@@ -555,7 +642,7 @@ export default function HomePage() {
                 setSelectedCities([]);
                 setSelectedEduLevel('');
                 setSelectedExamType('');
-                setOnlySuitable(false);
+                setEligibilityFilter('ALL');
                 setSearchQuery('');
               }}
               className="w-full py-2 text-xs font-bold text-slate-500 hover:text-rose-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
@@ -631,16 +718,16 @@ export default function HomePage() {
                   if (hasProfileFilled) {
                     if (matchSummary.suitableCount > 0) {
                       matchButton = (
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-100 text-[#1b4332] text-xs font-bold border border-emerald-300">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 text-[#1b4332] text-xs font-bold border border-emerald-300">
                           <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Sana Uygun ({matchSummary.suitableCount} Kadro)</span>
+                          <span>Tam Sana Uygun ({matchSummary.suitableCount} Kadro)</span>
                         </span>
                       );
                     } else if (matchSummary.maybeCount > 0) {
                       matchButton = (
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-100 text-amber-900 text-xs font-bold border border-amber-300">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100 text-amber-900 text-xs font-bold border border-amber-300">
                           <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Belki Uygun</span>
+                          <span>Belki Uygun (Özel Şartlı)</span>
                         </span>
                       );
                     } else {
@@ -707,7 +794,7 @@ export default function HomePage() {
                             </span>
 
                             <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-medium text-[11px]">
-                              {firstPos?.exam_type === 'KPSS_PUAN_USTUNLUGU' ? 'Mülakatsız' : 'Mülakat var'}
+                              {firstPos?.exam_type === 'KPSS_PUAN_USTUNLUGU' ? 'Mülakatsız' : firstPos?.exam_type === 'KURUM_SINAVI' ? 'Yazılı Sınav' : firstPos?.exam_type === 'UYGULAMALI' ? 'Uygulamalı' : 'Mülakat var'}
                             </span>
 
                             <span className="text-slate-400 text-[11px]">
@@ -774,6 +861,42 @@ export default function HomePage() {
                             {announcement.application_method}
                           </span>
                         </div>
+
+                        {/* ÖZEL ŞART / BELGE UYARISI */}
+                        {hasProfileFilled && matchSummary.suitableCount === 0 && matchSummary.maybeCount > 0 && (
+                          <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200/90 text-xs space-y-1.5 mt-2">
+                            <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                              <span>Aranan Özel Şart / Belge / Durum:</span>
+                            </div>
+                            <ul className="list-disc list-inside space-y-0.5 text-amber-950 font-medium text-[11px] pl-1">
+                              {matchSummary.matchedPositions
+                                .filter(mp => mp.evaluation.status === 'BELKI')
+                                .flatMap(mp => {
+                                  const specConds = mp.position.special_conditions || [];
+                                  const specReasons = (mp.evaluation.reasons || []).filter(r => 
+                                    r.includes('şart') || r.includes('belge') || r.includes('YDS') || r.includes('ALES') || r.includes('tecrübe') || r.includes('öğrenci')
+                                  );
+                                  return [...specConds, ...specReasons];
+                                })
+                                .filter((item, idx, arr) => arr.indexOf(item) === idx)
+                                .slice(0, 3)
+                                .map((condText, cIdx) => (
+                                  <li key={cIdx}>{condText}</li>
+                                ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* TAM UYGUNLUK BİLGİ KUTUSU */}
+                        {hasProfileFilled && matchSummary.suitableCount > 0 && (
+                          <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-[#1b4332] flex items-center gap-2 mt-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                            <span className="font-semibold text-[11px]">
+                              Bölümünüz, eğitim seviyeniz ve KPSS puanınız bu ilandaki <strong>{matchSummary.suitableCount} kadronun</strong> şartlarını eksiksiz karşılamaktadır!
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* ALT AKSİYON ŞERİDİ */}
