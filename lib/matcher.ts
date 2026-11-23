@@ -273,13 +273,69 @@ export function evaluateMatch(
     reasons.push('Halen öğrencisiniz. Son başvuru tarihine kadar mezun olunması gerekebilir.');
   }
 
-  // 9. ÖZEL ŞARTLAR / SERTİFİKALAR (Bilgilendirme Amaçlı)
+  // 9. BOY ŞARTI KONTROLÜ (İtfaiye, Zabıta, Polis, İnfaz Koruma vb.)
+  let heightMatch = true;
+  let requiredMinHeight: number | null = null;
+
+  if (position.gender_requirement === 'KADIN' || user.gender === 'KADIN') {
+    requiredMinHeight = position.min_height_female || position.min_height || null;
+  } else if (position.gender_requirement === 'ERKEK' || user.gender === 'ERKEK') {
+    requiredMinHeight = position.min_height_male || position.min_height || null;
+  } else {
+    requiredMinHeight = position.min_height || null;
+  }
+
+  // Eğer position alanlarında doğrudan tanımlı değilse special_conditions içini tara
+  if (!requiredMinHeight && position.special_conditions) {
+    for (const sc of position.special_conditions) {
+      const lower = sc.toLowerCase();
+      if (lower.includes('boy') || lower.includes('1.67') || lower.includes('1.60') || lower.includes('1.70') || lower.includes('167') || lower.includes('160') || lower.includes('170')) {
+        if (user.gender === 'KADIN') {
+          if (lower.includes('1.60') || lower.includes('160')) requiredMinHeight = 160;
+          else if (lower.includes('1.65') || lower.includes('165')) requiredMinHeight = 165;
+        } else {
+          if (lower.includes('1.67') || lower.includes('167')) requiredMinHeight = 167;
+          else if (lower.includes('1.70') || lower.includes('170')) requiredMinHeight = 170;
+          else if (lower.includes('1.65') || lower.includes('165')) requiredMinHeight = 165;
+        }
+      }
+    }
+  }
+
+  if (requiredMinHeight && requiredMinHeight > 0) {
+    if (user.height && user.height > 0) {
+      if (user.height < requiredMinHeight) {
+        isUnfit = true;
+        heightMatch = false;
+        reasons.push(
+          `Boyunuz (${user.height} cm), bu kadro için aranan asgari boy şartının (${requiredMinHeight} cm) altındadır.`
+        );
+      } else {
+        heightMatch = true;
+      }
+    } else {
+      isMaybe = true;
+      heightMatch = false;
+      reasons.push(
+        `Bu kadro için en az ${requiredMinHeight} cm boy şartı aranmaktadır; profilinizde boy bilginiz girilmemiş.`
+      );
+    }
+  }
+
+  // 10. ÖZEL ŞARTLAR / SERTİFİKALAR (Bilgilendirme Amaçlı)
   const pendingConditions: string[] = [];
   if (position.special_conditions && position.special_conditions.length > 0) {
     const userCerts = (user.certificates || []).map(normalizeTurkish);
 
     for (const cond of position.special_conditions) {
       const normCond = normalizeTurkish(cond);
+
+      // Eğer boy şartıysa ve kullanıcının boyu gereksinimi karşılıyorsa, şartı karşılandı say
+      const isHeightCond = normCond.includes('boy') || normCond.includes('1.67') || normCond.includes('1.60') || normCond.includes('167') || normCond.includes('160');
+      if (isHeightCond && user.height && requiredMinHeight && user.height >= requiredMinHeight) {
+        continue;
+      }
+
       const hasCert = userCerts.some(c => normCond.includes(c) || c.includes(normCond));
       if (!hasCert) {
         pendingConditions.push(cond);
@@ -349,6 +405,11 @@ export function evaluateMatch(
         match: gradMatch,
         message: gradMsg,
       },
+      height: requiredMinHeight ? {
+        match: heightMatch,
+        user: user.height ? `${user.height} cm` : 'Girilmedi',
+        required: `En az ${requiredMinHeight} cm`,
+      } : undefined,
       specialConditions: {
         match: pendingConditions.length === 0,
         pendingConditions,

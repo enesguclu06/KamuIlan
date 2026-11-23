@@ -22,6 +22,7 @@ export interface Announcement {
   institution: string;
   title: string;
   publish_date: string;
+  application_start_date?: string;
   deadline: string;
   application_method: string;
   raw_summary: string | null;
@@ -46,6 +47,9 @@ export interface Position {
   min_yds_score?: number | null;
   max_age: number | null;
   gender_requirement: GenderRequirement;
+  min_height?: number | null;
+  min_height_male?: number | null;
+  min_height_female?: number | null;
   cities: string[];
   special_conditions: string[];
   exam_type: ExamType;
@@ -57,6 +61,8 @@ export interface UserProfile {
   full_name?: string;
   birth_date?: string;
   gender?: 'ERKEK' | 'KADIN' | 'BELIRTILMEMIS';
+  height?: number;
+  weight?: number;
   military_status?: MilitaryStatus;
   education_level?: EducationLevel;
   department?: string;
@@ -89,6 +95,7 @@ export interface MatchEvaluation {
     age: { match: boolean; user: string; required: string };
     gender: { match: boolean; user: string; required: string };
     graduation: { match: boolean; message: string };
+    height?: { match: boolean; user: string; required: string };
     specialConditions: { match: boolean; pendingConditions: string[] };
   };
 }

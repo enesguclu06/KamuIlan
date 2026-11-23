@@ -74,6 +74,7 @@ export default function HomePage() {
   const [selectedEduLevel, setSelectedEduLevel] = useState<string>('');
   type EligibilityFilter = 'ALL' | 'SUITABLE' | 'MAYBE';
   const [eligibilityFilter, setEligibilityFilter] = useState<EligibilityFilter>('ALL');
+  const [onlyUpcoming, setOnlyUpcoming] = useState(false);
   const [sortOption, setSortOption] = useState<'DEADLINE' | 'NEWEST' | 'QUOTA'>('DEADLINE');
   const [activeStatTab, setActiveStatTab] = useState<'ANNOUNCEMENTS' | 'POSITIONS' | 'INSTITUTIONS'>('ANNOUNCEMENTS');
 
@@ -156,10 +157,19 @@ export default function HomePage() {
       const diffTime = deadlineDate.getTime() - now.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
+      const startDate = ann.application_start_date ? new Date(ann.application_start_date) : null;
+      const isUpcoming = Boolean(startDate && startDate.getTime() > now.getTime());
+      const daysToStart = isUpcoming && startDate
+        ? Math.ceil((startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+
       return {
         ...ann,
         matchSummary,
         daysLeft: diffDays,
+        startDate,
+        isUpcoming,
+        daysToStart,
       };
     });
   }, [announcements, profile]);
@@ -167,6 +177,11 @@ export default function HomePage() {
   // Filtreleme Mantığı
   const filteredList = useMemo(() => {
     let list = evaluatedAnnouncements.filter((item) => {
+      // 0. Gelecek Tarihli İlanlar Filtresi
+      if (onlyUpcoming && !item.isUpcoming) {
+        return false;
+      }
+
       // 1. Uygunluk Filtresi (Tümü / Tam Bana Uygun / Belki Uygun)
       if (eligibilityFilter === 'SUITABLE') {
         if (!hasProfileFilled) return true;
@@ -177,14 +192,18 @@ export default function HomePage() {
         if (item.matchSummary.maybeCount === 0) return false;
       }
 
-      // 2. Metin Arama
+      // 2. Metin Arama (Kurum, Başlık, Kadro, Şehir, Başvuru Yöntemi, Özet)
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesInstitution = item.institution.toLowerCase().includes(q);
         const matchesTitle = item.title.toLowerCase().includes(q);
         const matchesPosition = (item.positions || []).some(p => p.title.toLowerCase().includes(q));
         const matchesCities = (item.positions || []).some(p => p.cities.some(c => c.toLowerCase().includes(q)));
-        if (!matchesInstitution && !matchesTitle && !matchesPosition && !matchesCities) return false;
+        const matchesMethod = (item.application_method || '').toLowerCase().includes(q);
+        const matchesSummary = (item.raw_summary || '').toLowerCase().includes(q);
+        const matchesUpcomingKeyword = (q.includes('gelecek') || q.includes('yakında') || q.includes('aralık') || q.includes('7 aralık')) && (item.isUpcoming || matchesMethod);
+
+        if (!matchesInstitution && !matchesTitle && !matchesPosition && !matchesCities && !matchesMethod && !matchesSummary && !matchesUpcomingKeyword) return false;
       }
 
       // 3. Şehir Filtresi (Çoklu seçim)
@@ -224,7 +243,7 @@ export default function HomePage() {
     }
 
     return list;
-  }, [evaluatedAnnouncements, eligibilityFilter, hasProfileFilled, searchQuery, selectedCities, selectedEduLevel, selectedExamType, sortOption]);
+  }, [evaluatedAnnouncements, onlyUpcoming, eligibilityFilter, hasProfileFilled, searchQuery, selectedCities, selectedEduLevel, selectedExamType, sortOption]);
 
   const totalPositionsCount = useMemo(() => {
     return announcements.reduce((sum, a) => sum + (a.positions || []).reduce((s, p) => s + p.quota, 0), 0);
@@ -236,7 +255,7 @@ export default function HomePage() {
   }, [announcements]);
 
   const expiringThisWeekCount = useMemo(() => {
-    return evaluatedAnnouncements.filter(a => a.daysLeft > 0 && a.daysLeft <= 7).length;
+    return evaluatedAnnouncements.filter(a => a.daysLeft > 0 && a.daysLeft <= 7 && !a.isUpcoming).length;
   }, [evaluatedAnnouncements]);
 
   const newAnnouncementsCount = useMemo(() => {
@@ -245,6 +264,10 @@ export default function HomePage() {
       const diff = Date.now() - pDate.getTime();
       return diff <= 7 * 24 * 60 * 60 * 1000;
     }).length;
+  }, [evaluatedAnnouncements]);
+
+  const upcomingAnnouncementsCount = useMemo(() => {
+    return evaluatedAnnouncements.filter(a => a.isUpcoming).length;
   }, [evaluatedAnnouncements]);
 
   const suitableAnnouncementsCount = useMemo(() => {
@@ -388,6 +411,20 @@ export default function HomePage() {
             <span className="font-bold text-emerald-700 font-mono">{newAnnouncementsCount}</span>
           </div>
 
+          <button
+            type="button"
+            onClick={() => setOnlyUpcoming(!onlyUpcoming)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              onlyUpcoming
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-white border border-[#e5dfd5] text-slate-700 hover:bg-blue-50'
+            }`}
+          >
+            <Calendar className={`w-3.5 h-3.5 ${onlyUpcoming ? 'text-white' : 'text-blue-600'}`} />
+            <span className={onlyUpcoming ? 'text-blue-100 font-bold' : 'text-slate-400 font-bold'}>BAŞVURUSU YAKINDA:</span>
+            <span className={`font-bold font-mono ${onlyUpcoming ? 'text-white' : 'text-blue-700'}`}>{upcomingAnnouncementsCount}</span>
+          </button>
+
           {hasProfileFilled && (
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -506,6 +543,27 @@ export default function HomePage() {
                     eligibilityFilter === 'MAYBE' ? 'bg-white/20 text-white' : 'bg-white text-amber-900'
                   }`}>
                     {hasProfileFilled ? `${maybeAnnouncementsCount} İlan` : 'Giriş Yap'}
+                  </span>
+                </button>
+
+                {/* Gelecek İlanlar Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setOnlyUpcoming(!onlyUpcoming)}
+                  className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
+                    onlyUpcoming
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-blue-50/70 hover:bg-blue-100/70 text-blue-900 border border-blue-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className={`w-3.5 h-3.5 ${onlyUpcoming ? 'text-white' : 'text-blue-600'}`} />
+                    <span>Gelecek İlanlar (Yakında)</span>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                    onlyUpcoming ? 'bg-white/20 text-white' : 'bg-white text-blue-900'
+                  }`}>
+                    {upcomingAnnouncementsCount} İlan
                   </span>
                 </button>
               </div>
@@ -643,6 +701,7 @@ export default function HomePage() {
                 setSelectedEduLevel('');
                 setSelectedExamType('');
                 setEligibilityFilter('ALL');
+                setOnlyUpcoming(false);
                 setSearchQuery('');
               }}
               className="w-full py-2 text-xs font-bold text-slate-500 hover:text-rose-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
@@ -800,36 +859,64 @@ export default function HomePage() {
                             <span className="text-slate-400 text-[11px]">
                               {announcement.source === 'RESMI_GAZETE' ? 'Resmî Gazete' : 'Kariyer Kapısı'}
                             </span>
-                          </div>
-                        </div>
 
-                        {/* Sağ Taraf: Büyük Takvim Kutusu (Memuryolu Birebir Tasarımı) */}
-                        <div className="w-20 rounded-xl overflow-hidden border border-[#e5dfd5] text-center shadow-sm flex-shrink-0 bg-white">
-                          <div className="bg-[#b91c1c] text-white text-[10px] font-black py-0.5 tracking-wider uppercase">
-                            {monthName}
-                          </div>
-                          <div className="py-1">
-                            <span className="text-2xl font-black text-slate-900 leading-none">
-                              {dayNum}
-                            </span>
-                            <span className="block text-[10px] text-slate-500 font-mono mt-0.5">
-                              {hours}:{minutes}
-                            </span>
-                          </div>
-                          <div className="bg-slate-50 py-1 px-1 border-t border-slate-100">
-                            {daysLeft <= 0 ? (
-                              <span className="text-[10px] font-bold text-slate-400">Bitti</span>
-                            ) : daysLeft <= 2 ? (
-                              <span className="text-[10px] font-extrabold text-[#b91c1c] block">
-                                Son {daysLeft} gün
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-semibold text-slate-600">
-                                {daysLeft} gün kaldı
+                            {announcement.isUpcoming && (
+                              <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold border border-indigo-200 flex items-center gap-1 text-[11px]">
+                                <Calendar className="w-3 h-3 text-indigo-600" />
+                                <span>Gelecek İlan: {announcement.startDate ? `${announcement.startDate.getDate()} ${announcement.startDate.toLocaleString('tr-TR', { month: 'short' }).toUpperCase()}` : ''} Başlıyor ({announcement.daysToStart} gün var)</span>
                               </span>
                             )}
                           </div>
                         </div>
+
+                        {/* Sağ Taraf: Büyük Takvim Kutusu */}
+                        {announcement.isUpcoming ? (
+                          <div className="w-24 rounded-xl overflow-hidden border border-indigo-200 text-center shadow-sm flex-shrink-0 bg-white">
+                            <div className="bg-indigo-600 text-white text-[10px] font-black py-0.5 tracking-wider uppercase">
+                              BAŞLANGIÇ
+                            </div>
+                            <div className="py-1 bg-indigo-50/40">
+                              <span className="text-2xl font-black text-indigo-950 leading-none">
+                                {announcement.startDate ? announcement.startDate.getDate() : dayNum}
+                              </span>
+                              <span className="block text-[10px] text-indigo-700 font-bold mt-0.5 uppercase">
+                                {announcement.startDate ? announcement.startDate.toLocaleString('tr-TR', { month: 'short' }) : monthName}
+                              </span>
+                            </div>
+                            <div className="bg-indigo-50 py-1 px-1 border-t border-indigo-100">
+                              <span className="text-[10px] font-extrabold text-indigo-700 block">
+                                {announcement.daysToStart} gün kaldı
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-20 rounded-xl overflow-hidden border border-[#e5dfd5] text-center shadow-sm flex-shrink-0 bg-white">
+                            <div className="bg-[#b91c1c] text-white text-[10px] font-black py-0.5 tracking-wider uppercase">
+                              {monthName}
+                            </div>
+                            <div className="py-1">
+                              <span className="text-2xl font-black text-slate-900 leading-none">
+                                {dayNum}
+                              </span>
+                              <span className="block text-[10px] text-slate-500 font-mono mt-0.5">
+                                {hours}:{minutes}
+                              </span>
+                            </div>
+                            <div className="bg-slate-50 py-1 px-1 border-t border-slate-100">
+                              {daysLeft <= 0 ? (
+                                <span className="text-[10px] font-bold text-slate-400">Bitti</span>
+                              ) : daysLeft <= 2 ? (
+                                <span className="text-[10px] font-extrabold text-[#b91c1c] block">
+                                  Son {daysLeft} gün
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-semibold text-slate-600">
+                                  {daysLeft} gün kaldı
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
                       </div>
 
@@ -861,6 +948,16 @@ export default function HomePage() {
                             {announcement.application_method}
                           </span>
                         </div>
+
+                        {/* GELECEK BAŞVURU BİLGİ KUTUSU */}
+                        {announcement.isUpcoming && (
+                          <div className="p-2.5 rounded-xl bg-indigo-50/90 border border-indigo-200 text-indigo-950 text-xs flex items-center gap-2 mt-2">
+                            <Info className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                            <span className="font-medium text-[11px]">
+                              <strong>Gelecek Başvuru:</strong> Bu ilanın Resmî Gazete ilanı yayımlanmış olup başvurular henüz açılmamıştır. Başvurular <strong>{announcement.startDate ? announcement.startDate.toLocaleDateString('tr-TR') : ''}</strong> tarihinde başlayacaktır ({announcement.daysToStart} gün sonra).
+                            </span>
+                          </div>
+                        )}
 
                         {/* ÖZEL ŞART / BELGE UYARISI */}
                         {hasProfileFilled && matchSummary.suitableCount === 0 && matchSummary.maybeCount > 0 && (
@@ -902,16 +999,28 @@ export default function HomePage() {
                       {/* ALT AKSİYON ŞERİDİ */}
                       <div className="pt-1 flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
-                          {/* Başvur Butonu (Koyu Yeşil) */}
-                          <a
-                            href={announcement.application_method.includes('http') ? announcement.application_method.match(/https?:\/\/[^\s)]+/)?.[0] || 'https://isealimkariyerkapisi.cbiko.gov.tr' : 'https://isealimkariyerkapisi.cbiko.gov.tr'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-xs font-bold transition-all shadow-sm"
-                          >
-                            <span>Başvur</span>
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
+                          {/* Başvur Butonu veya Gelecek Tarihli Bilgi Butonu */}
+                          {announcement.isUpcoming ? (
+                            <button
+                              type="button"
+                              onClick={() => alert(`Bu ilan için başvurular ${announcement.startDate ? announcement.startDate.toLocaleDateString('tr-TR') : ''} tarihinde başlayacaktır.\n\nİlan Tarihleri: ${announcement.application_method}\n\nBaşvuru günü geldiğinde sistem üzerinden doğrudan başvuru ekranına yönlendirileceksiniz.`)}
+                              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-bold transition-all shadow-sm"
+                              title="Başvuru süreci henüz başlamadı"
+                            >
+                              <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>{announcement.startDate ? `${announcement.startDate.getDate()} ${announcement.startDate.toLocaleString('tr-TR', { month: 'short' })}'te Açılacak` : 'Yakında Açılacak'}</span>
+                            </button>
+                          ) : (
+                            <a
+                              href={announcement.application_method.includes('http') ? announcement.application_method.match(/https?:\/\/[^\s)]+/)?.[0] || 'https://isealimkariyerkapisi.cbiko.gov.tr' : 'https://isealimkariyerkapisi.cbiko.gov.tr'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-xs font-bold transition-all shadow-sm"
+                            >
+                              <span>Başvur</span>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
 
                           {/* Sana Uygun mu? Butonu */}
                           {matchButton}
