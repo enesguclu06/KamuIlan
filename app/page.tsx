@@ -38,6 +38,8 @@ import { SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { useUserProfile } from '@/lib/context/user-profile-context';
 import { computeAnnouncementMatch } from '@/lib/matcher';
+import { WhatsAppIcon } from '@/components/WhatsAppIcon';
+import { openWhatsappShare } from '@/lib/share';
 
 const ALL_TURKEY_CITIES = [
   'ADANA', 'ADIYAMAN', 'AFYONKARAHİSAR', 'AĞRI', 'AMASYA', 'ANKARA', 'ANTALYA', 'ARTVİN',
@@ -1268,6 +1270,17 @@ export default function HomePage() {
                           >
                             <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-600 text-rose-600' : ''}`} />
                             <span className="hidden sm:inline">Favori</span>
+                          </button>
+
+                          {/* WhatsApp Arkadaşına Gönder Butonu */}
+                          <button
+                            type="button"
+                            onClick={() => openWhatsappShare(announcement)}
+                            className="p-2 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                            title="WhatsApp ile Arkadaşına Gönder"
+                          >
+                            <WhatsAppIcon className="w-4 h-4 text-emerald-600" />
+                            <span className="hidden sm:inline">WhatsApp</span>
                           </button>
                         </div>
 

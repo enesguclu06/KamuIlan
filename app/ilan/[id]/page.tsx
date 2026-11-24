@@ -23,6 +23,8 @@ import {
   Info,
   Heart
 } from 'lucide-react';
+import { WhatsAppIcon } from '@/components/WhatsAppIcon';
+import { openWhatsappShare } from '@/lib/share';
 import { Announcement, Position, MatchEvaluation } from '@/types';
 import { SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -140,6 +142,17 @@ export default function AnnouncementDetailPage() {
           Tüm İlanlara Dön
         </Link>
         <div className="flex items-center gap-2">
+          {/* WhatsApp Butonu */}
+          <button
+            type="button"
+            onClick={() => openWhatsappShare(announcement)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold transition-all shadow-sm"
+            title="WhatsApp ile Arkadaşına Gönder"
+          >
+            <WhatsAppIcon className="w-3.5 h-3.5" />
+            <span>WhatsApp</span>
+          </button>
+
           {/* Favori Butonu */}
           <button
             type="button"
@@ -159,7 +172,7 @@ export default function AnnouncementDetailPage() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span>{copied ? 'Link Kopyalandı!' : 'İlanı Paylaş'}</span>
+            <span>{copied ? 'Link Kopyalandı!' : 'Linki Kopyala'}</span>
           </button>
         </div>
       </div>
@@ -268,6 +281,16 @@ export default function AnnouncementDetailPage() {
               <FileCheck2 className="w-4 h-4 text-slate-500" />
             </a>
           )}
+
+          <button
+            type="button"
+            onClick={() => openWhatsappShare(announcement)}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-sm font-bold shadow-md shadow-emerald-950/15 transition-all hover:scale-105"
+            title="İlanı WhatsApp üzerinden arkadaşlarına veya gruplara ilet"
+          >
+            <WhatsAppIcon className="w-4 h-4" />
+            <span>WhatsApp ile Arkadaşına Gönder</span>
+          </button>
         </div>
       </div>
 

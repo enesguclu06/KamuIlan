@@ -24,6 +24,8 @@ import { SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { computeAnnouncementMatch } from '@/lib/matcher';
 import { Announcement } from '@/types';
+import { WhatsAppIcon } from '@/components/WhatsAppIcon';
+import { openWhatsappShare } from '@/lib/share';
 
 export default function FavoritesPage() {
   const { profile, hasProfileFilled, favorites, toggleFavorite, clearFavorites } = useUserProfile();
@@ -331,6 +333,17 @@ export default function FavoritesPage() {
                           <span>Başvur</span>
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
+
+                        {/* WhatsApp Butonu */}
+                        <button
+                          type="button"
+                          onClick={() => openWhatsappShare(announcement)}
+                          className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                          title="WhatsApp ile Arkadaşına Gönder"
+                        >
+                          <WhatsAppIcon className="w-4 h-4 text-emerald-600" />
+                          <span>WhatsApp</span>
+                        </button>
 
                         {/* Favoriden Çıkar Butonu */}
                         <button
