@@ -60,7 +60,7 @@ class ParsedAnnouncement(BaseModel):
     title: str = Field(description="İlanın genel başlığı")
     deadline: str = Field(description="Son başvuru tarihi ve saati. Format: YYYY-MM-DDTHH:MM:SS veya YYYY-MM-DD")
     application_method: str = Field(
-        default="Kariyer Kapısı (https://isealimkariyerkapisi.cbiko.gov.tr)",
+        default="Kariyer Kapısı (https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar)",
         description="Başvurunun nereye yapılacağı (Kariyer Kapısı, e-Devlet, Şahsen, Posta vb.)"
     )
     raw_summary: str = Field(description="İlanın 2-3 cümlelik net özeti (Kurum, toplam kontenjan, önemli tarihler)")
@@ -198,7 +198,7 @@ def create_fallback_parsed_announcement(raw_text: str, fallback_title: str) -> P
         institution=institution,
         title=title,
         deadline=deadline,
-        application_method="Kariyer Kapısı (https://isealimkariyerkapisi.cbiko.gov.tr)",
+        application_method="Kariyer Kapısı (https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar)",
         raw_summary=f"{institution} tarafından yayımlanan personel alım ilanı.",
         positions=[default_position]
     )

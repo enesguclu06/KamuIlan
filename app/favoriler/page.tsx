@@ -317,8 +317,12 @@ export default function FavoritesPage() {
                         <a
                           href={
                             announcement.application_method.includes('http')
-                              ? announcement.application_method.match(/https?:\/\/[^\s)]+/)?.[0]?.replace('isealimkariyerkapisi.cbiko.gov.tr', 'www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim') || 'https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim'
-                              : 'https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim'
+                              ? announcement.application_method
+                                  .match(/https?:\/\/[^\s)]+/)?.[0]
+                                  ?.replace('isealimkariyerkapisi.cbiko.gov.tr', 'kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar')
+                                  ?.replace('www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim', 'kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar')
+                                  || 'https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar'
+                              : 'https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar'
                           }
                           target="_blank"
                           rel="noopener noreferrer"

@@ -238,22 +238,26 @@ export default function AnnouncementDetailPage() {
           <a
             href={
               announcement.application_method.includes('http')
-                ? announcement.application_method.match(/https?:\/\/[^\s)]+/)?.[0]?.replace('isealimkariyerkapisi.cbiko.gov.tr', 'www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim') || 'https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim'
-                : 'https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim'
+                ? announcement.application_method
+                    .match(/https?:\/\/[^\s)]+/)?.[0]
+                    ?.replace('isealimkariyerkapisi.cbiko.gov.tr', 'kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar')
+                    ?.replace('www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim', 'kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar')
+                    || 'https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar'
+                : 'https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar'
             }
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-sm font-bold shadow-md shadow-emerald-900/20 transition-all"
           >
-            <span>Resmi Başvuru Ekranına Git (e-Devlet)</span>
+            <span>Resmi Başvuru Ekranına Git (Kariyer Kapısı)</span>
             <ExternalLink className="w-4 h-4" />
           </a>
 
           {announcement.source_url && (
             <a
               href={
-                announcement.source_url.includes('isealimkariyerkapisi.cbiko.gov.tr')
-                  ? 'https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim'
+                announcement.source_url.includes('isealimkariyerkapisi.cbiko.gov.tr') || announcement.source_url.includes('turkiye.gov.tr/kariyer-kapisi')
+                  ? 'https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar'
                   : announcement.source_url
               }
               target="_blank"
