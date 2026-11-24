@@ -2,12 +2,20 @@ import time
 from typing import Dict, Any, List
 import httpx
 
-from scraper.config import (
-    TELEGRAM_BOT_TOKEN,
-    APP_URL,
-    get_supabase_client
-)
-from scraper.matcher import evaluate_match
+try:
+    from scraper.config import (
+        TELEGRAM_BOT_TOKEN,
+        APP_URL,
+        get_supabase_client
+    )
+    from scraper.matcher import evaluate_match
+except ImportError:
+    from config import (
+        TELEGRAM_BOT_TOKEN,
+        APP_URL,
+        get_supabase_client
+    )
+    from matcher import evaluate_match
 
 def send_telegram_message(chat_id: str, html_message: str) -> bool:
     """Telegram Bot API üzerinden tekil bir kullanıcıya HTML formatlı bildirim gönderir."""

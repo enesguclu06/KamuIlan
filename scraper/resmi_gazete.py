@@ -5,7 +5,10 @@ import httpx
 from bs4 import BeautifulSoup
 import fitz  # PyMuPDF
 
-from scraper.config import get_supabase_client
+try:
+    from scraper.config import get_supabase_client
+except ImportError:
+    from config import get_supabase_client
 
 TARGET_KEYWORDS = [
     "personel alım",

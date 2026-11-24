@@ -1,23 +1,35 @@
 import os
 import sys
 
-# Ensure repository root is in sys.path
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
+# Kök dizini ve scraper dizinini sys.path'e garanti olarak ekle
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(CURRENT_DIR)
+for p in [BASE_DIR, CURRENT_DIR]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
 import argparse
 import datetime
 from typing import Optional
 
-from scraper.config import get_supabase_client
-from scraper.resmi_gazete import (
-    fetch_resmi_gazete_daily_links,
-    extract_content_from_url,
-    get_existing_urls_from_supabase
-)
-from scraper.ai_parser import parse_announcement_with_gemini
-from scraper.notifier import notify_users_for_announcement
+try:
+    from scraper.config import get_supabase_client
+    from scraper.resmi_gazete import (
+        fetch_resmi_gazete_daily_links,
+        extract_content_from_url,
+        get_existing_urls_from_supabase
+    )
+    from scraper.ai_parser import parse_announcement_with_gemini
+    from scraper.notifier import notify_users_for_announcement
+except ImportError:
+    from config import get_supabase_client
+    from resmi_gazete import (
+        fetch_resmi_gazete_daily_links,
+        extract_content_from_url,
+        get_existing_urls_from_supabase
+    )
+    from ai_parser import parse_announcement_with_gemini
+    from notifier import notify_users_for_announcement
 
 def save_announcement_to_supabase(parsed, source_url: str, source: str = "RESMI_GAZETE") -> Optional[str]:
     """Ayrıştırılmış ilanı ve pozisyonlarını Supabase veritabanına kaydeder."""

@@ -14,7 +14,10 @@ if BASE_DIR not in sys.path:
 
 import time
 import httpx
-from scraper.config import TELEGRAM_BOT_TOKEN
+try:
+    from scraper.config import TELEGRAM_BOT_TOKEN
+except ImportError:
+    from config import TELEGRAM_BOT_TOKEN
 
 def run_bot_listener():
     if not TELEGRAM_BOT_TOKEN:

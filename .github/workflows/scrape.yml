@@ -2,8 +2,8 @@ name: Günlük Kamu İlan Tarayıcısı ve Bildirim Dağıtımı
 
 on:
   schedule:
-    # Her gün 08:30 ve 18:30 TSİ (05:30 ve 15:30 UTC)
-    - cron: '30 5,15 * * *'
+    # Sadece her gün sabah 08:30 TSİ (05:30 UTC)
+    - cron: '30 5 * * *'
   workflow_dispatch:
     inputs:
       limit:
@@ -42,7 +42,7 @@ jobs:
 
       - name: Scraper ve AI Parser Pipeline Çalıştır
         env:
-          PYTHONPATH: .
+          PYTHONPATH: ${{ github.workspace }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

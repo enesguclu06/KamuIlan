@@ -3,7 +3,10 @@ import re
 from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
 
-from scraper.config import get_gemini_client, GEMINI_MODEL_NAME
+try:
+    from scraper.config import get_gemini_client, GEMINI_MODEL_NAME
+except ImportError:
+    from config import get_gemini_client, GEMINI_MODEL_NAME
 
 # ==============================================================================
 # PYDANTIC ŞEMALARI (STRUCTURED OUTPUT)
