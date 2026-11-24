@@ -171,10 +171,16 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       } catch {}
     }
     if (!activeEmail) {
-      // Eğer henüz giriş yapılmamışsa adayın kendi isminden veya sabit e-postadan yerel hesap oluştur
-      activeEmail = newProfile.full_name 
-        ? `${newProfile.full_name.toLowerCase().replace(/[^a-z0-9]/g, '')}@kamuilan.com` 
-        : 'enesguclu06@gmail.com';
+      // Eğer kullanıcı oturum açmadan profil doldurduysa, tarayıcıya özel tekil anonim kimlik ata
+      let anonId = '';
+      try {
+        anonId = localStorage.getItem('kamu_ilan_anon_id') || '';
+        if (!anonId) {
+          anonId = `misafir_${Math.random().toString(36).substring(2, 9)}@yerel.kamuilan`;
+          localStorage.setItem('kamu_ilan_anon_id', anonId);
+        }
+      } catch {}
+      activeEmail = anonId || 'misafir@yerel.kamuilan';
     }
 
     if (activeEmail) {
@@ -282,21 +288,20 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       return;
     }
 
-    // 4. Eğer bu hesap tamamen yeni ise ve hiçbir kayıt bulunamadıysa varsayılan profili oluştur
-    const candidateName = fullName || (normEmail.includes('enes') ? 'Enes Güçlü' : normEmail.split('@')[0]);
-    const isEnes = normEmail.includes('enes');
+    // 4. Eğer bu hesap tamamen yeni ise ve hiçbir kayıt bulunamadıysa temiz profil oluştur
+    const candidateName = fullName?.trim() || normEmail.split('@')[0];
     const newProfile: UserProfile = {
       full_name: candidateName,
       education_level: defaultCriteria?.education_level || 'LISANS',
-      department: defaultCriteria?.department || (isEnes ? 'Bilgisayar Mühendisliği' : ''),
+      department: defaultCriteria?.department || '',
       graduation_status: defaultCriteria?.graduation_status || 'MEZUN',
       kpss_type: defaultCriteria?.kpss_type || 'KPSSP3',
-      kpss_score: defaultCriteria?.kpss_score ?? (isEnes ? 76.5 : undefined),
-      gender: defaultCriteria?.gender || (isEnes ? 'ERKEK' : 'BELIRTILMEMIS'),
-      height: defaultCriteria?.height ?? (isEnes ? 178 : undefined),
-      weight: defaultCriteria?.weight ?? (isEnes ? 75 : undefined),
-      birth_date: defaultCriteria?.birth_date || (isEnes ? '2000-01-01' : ''),
-      military_status: defaultCriteria?.military_status || (isEnes ? 'MUAFIYET' : 'YOK'),
+      kpss_score: defaultCriteria?.kpss_score ?? undefined,
+      gender: defaultCriteria?.gender || 'BELIRTILMEMIS',
+      height: defaultCriteria?.height ?? undefined,
+      weight: defaultCriteria?.weight ?? undefined,
+      birth_date: defaultCriteria?.birth_date || '',
+      military_status: defaultCriteria?.military_status || 'YOK',
       ...defaultCriteria,
     };
     await updateProfile(newProfile);
@@ -317,10 +322,13 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     }
     try {
       localStorage.removeItem(AUTH_KEY);
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(FAVS_KEY);
     } catch {}
     setIsLoggedIn(false);
     setUserEmail(null);
     setProfile(null);
+    setFavorites([]);
   };
 
   const toggleFavorite = (id: string) => {
