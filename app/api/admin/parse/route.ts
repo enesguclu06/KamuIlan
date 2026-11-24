@@ -93,7 +93,7 @@ Metni analiz et ve aşağıdaki JSON şemasına BİREBİR uyan geçerli bir JSON
       institution: firstLine.length < 80 ? firstLine : 'Kamu Kurumu',
       title: `${firstLine.length < 80 ? firstLine : 'Kamu Kurumu'} Sözleşmeli Personel Alım İlanı`,
       deadline: deadlineDate.toISOString().replace('.000Z', ''),
-      application_method: 'Kariyer Kapısı (https://isealimkariyerkapisi.cbiko.gov.tr)',
+      application_method: 'e-Devlet / Kariyer Kapısı (https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim)',
       raw_summary: `${firstLine} bünyesinde istihdam edilmek üzere çeşitli unvanlarda personel istihdam edilecektir.`,
       positions: [
         {

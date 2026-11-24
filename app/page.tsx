@@ -1204,7 +1204,11 @@ export default function HomePage() {
                             </button>
                           ) : (
                             <a
-                              href={announcement.application_method.includes('http') ? announcement.application_method.match(/https?:\/\/[^\s)]+/)?.[0] || 'https://isealimkariyerkapisi.cbiko.gov.tr' : 'https://isealimkariyerkapisi.cbiko.gov.tr'}
+                              href={
+                                announcement.application_method.includes('http')
+                                  ? announcement.application_method.match(/https?:\/\/[^\s)]+/)?.[0]?.replace('isealimkariyerkapisi.cbiko.gov.tr', 'www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim') || 'https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim'
+                                  : 'https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim'
+                              }
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-xs font-bold transition-all shadow-sm"

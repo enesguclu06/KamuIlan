@@ -48,7 +48,7 @@ export function Footer() {
                 <a href="https://www.resmigazete.gov.tr" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Resmî Gazete Çeşitli İlanlar</a>
               </li>
               <li>
-                <a href="https://isealimkariyerkapisi.cbiko.gov.tr" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Cumhurbaşkanlığı Kariyer Kapısı</a>
+                <a href="https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Cumhurbaşkanlığı Kariyer Kapısı (e-Devlet)</a>
               </li>
             </ul>
           </div>

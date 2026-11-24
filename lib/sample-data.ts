@@ -3,7 +3,7 @@ import { Announcement } from '@/types';
 // ==============================================================================
 // T.C. RESMÎ VE DOĞRULANMIŞ KAMU PERSONEL ALIM İLANLARI
 // Kaynaklar: 
-//   - T.C. Cumhurbaşkanlığı Kariyer Kapısı (isealimkariyerkapisi.cbiko.gov.tr)
+//   - T.C. Cumhurbaşkanlığı Kariyer Kapısı (turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim)
 //   - T.C. Resmî Gazete Çeşitli İlanlar (resmigazete.gov.tr)
 //   - Basın İlan Kurumu Resmî İlan Portalı (ilan.gov.tr)
 // Dönem: KASIM - ARALIK 2026 (Canlı ve Başvurusu Açık / Takvimli İlanlar)
@@ -15,13 +15,13 @@ export const SAMPLE_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-sayistay-1',
     source: 'KARIYER_KAPISI',
-    source_url: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+    source_url: 'https://www.sayistay.gov.tr',
     institution: 'Sayıştay Başkanlığı',
     title: 'SAYIŞTAY BAŞKANLIĞI - SÖZLEŞMELİ ÇÖZÜMLEYİCİ & SÖZLEŞMELİ PROGRAMCI ALIM İLANI',
     publish_date: '2026-11-11',
     application_start_date: '2026-11-11T09:00:00Z',
     deadline: '2026-11-25T23:59:59Z',
-    application_method: 'e-Devlet / Kariyer Kapısı Kamu İşe Alım (https://isealimkariyerkapisi.cbiko.gov.tr) — Son Başvuru: 25 Kasım 2026',
+    application_method: 'e-Devlet / Kariyer Kapısı Kamu İşe Alım (https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim) — Son Başvuru: 25 Kasım 2026',
     raw_summary: 'Sayıştay Başkanlığı İnsan Kaynakları Birim Başkanlığı tarafından 657 sayılı Kanunun 4/B maddesi kapsamında 3 Sözleşmeli Çözümleyici, 9 Sözleşmeli Programcı (Lisans) ve 4 Sözleşmeli Programcı (Ön Lisans) olmak üzere toplam 16 sözleşmeli bilişim personeli alınacaktır.',
     is_active: true,
     created_at: '2026-11-11T09:00:00Z',
@@ -115,13 +115,13 @@ export const SAMPLE_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-icisleri-1',
     source: 'KARIYER_KAPISI',
-    source_url: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+    source_url: 'https://www.resmigazete.gov.tr',
     institution: 'T.C. İçişleri Bakanlığı',
     title: 'Merkez ve Taşra Teşkilatına 1.170 Sözleşmeli Personel Alımı (4/B)',
     publish_date: '2026-11-22',
     application_start_date: '2026-12-07T09:30:00Z',
     deadline: '2026-12-11T17:00:00Z',
-    application_method: 'e-Devlet / Kariyer Kapısı (https://isealimkariyerkapisi.cbiko.gov.tr) — Başvurular: 7 - 11 Aralık 2026',
+    application_method: 'e-Devlet / Kariyer Kapısı (https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim) — Başvurular: 7 - 11 Aralık 2026',
     raw_summary: 'İçişleri Bakanlığı merkez ve taşra (valilikler ve 112 Acil Çağrı Merkezleri) teşkilatında istihdam edilmek üzere 1.170 sözleşmeli personel alımı yapılacaktır. Başvurular 7 Aralık 2026 tarihinde Kariyer Kapısı üzerinden açılacaktır.',
     is_active: true,
     created_at: '2026-11-22T08:30:00Z',
@@ -255,13 +255,13 @@ export const SAMPLE_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-atk-1',
     source: 'KARIYER_KAPISI',
-    source_url: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+    source_url: 'https://www.atk.gov.tr',
     institution: 'Adalet Bakanlığı Adli Tıp Kurumu Başkanlığı',
     title: 'Merkez ve Taşra Teşkilatına 181 Sözleşmeli Personel Alımı (4/B)',
     publish_date: '2026-11-20',
     application_start_date: '2026-11-30T09:00:00Z',
     deadline: '2026-12-06T23:59:00Z',
-    application_method: 'e-Devlet / Kariyer Kapısı (https://isealimkariyerkapisi.cbiko.gov.tr) — Başvuru: 30 Kasım – 6 Aralık 2026',
+    application_method: 'e-Devlet / Kariyer Kapısı (https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim) — Başvuru: 30 Kasım – 6 Aralık 2026',
     raw_summary: 'Adalet Bakanlığı Adli Tıp Kurumu Başkanlığı merkez ve taşra birimlerinde istihdam edilmek üzere Bilişim Mühendisi, Kimyager, Biyolog, Tekniker, Sağlık Teknikeri (Otopsi), Büro Personeli ve İnfaz Koruma / Güvenlik Görevlisi kadrolarına 181 personel alınacaktır.',
     is_active: true,
     created_at: '2026-11-20T08:30:00Z',
@@ -383,12 +383,12 @@ export const SAMPLE_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-ssb-1',
     source: 'KARIYER_KAPISI',
-    source_url: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+    source_url: 'https://www.ssb.gov.tr',
     institution: 'Cumhurbaşkanlığı Savunma Sanayii Başkanlığı',
     title: '26 Proje Bazlı Sözleşmeli Personel Alım İlanı',
     publish_date: '2026-11-20',
     deadline: '2026-12-21T23:59:00Z',
-    application_method: 'e-Devlet / Kariyer Kapısı Kamu İşe Alım (https://isealimkariyerkapisi.cbiko.gov.tr) — Son Başvuru: 21 Aralık 2026',
+    application_method: 'e-Devlet / Kariyer Kapısı Kamu İşe Alım (https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim) — Son Başvuru: 21 Aralık 2026',
     raw_summary: 'Cumhurbaşkanlığı Savunma Sanayii Başkanlığı bünyesinde yürütülen savunma sanayii projelerinde istihdam edilmek üzere Siber Güvenlik, Aviyonik ve Yazılım, Radar Sistemleri ve Proje Yönetimi alanlarında 26 sözleşmeli uzman personel alınacaktır.',
     is_active: true,
     created_at: '2026-11-20T10:00:00Z',
@@ -478,13 +478,13 @@ export const SAMPLE_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-kultur-1',
     source: 'KARIYER_KAPISI',
-    source_url: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+    source_url: 'https://www.resmigazete.gov.tr',
     institution: 'T.C. Kültür ve Turizm Bakanlığı',
     title: '20 Kültür ve Turizm Uzman Yardımcısı Alım İlanı',
     publish_date: '2026-11-24',
     application_start_date: '2026-12-09T10:00:00Z',
     deadline: '2026-12-23T23:59:00Z',
-    application_method: 'e-Devlet / Kariyer Kapısı (https://isealimkariyerkapisi.cbiko.gov.tr) — Başvuru: 9 - 23 Aralık 2026',
+    application_method: 'e-Devlet / Kariyer Kapısı (https://www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim) — Başvuru: 9 - 23 Aralık 2026',
     raw_summary: 'Kültür ve Turizm Bakanlığı merkez teşkilatında istihdam edilmek üzere Bilişim, Sanat Tarihi, Arkeoloji, İİBF ve Hukuk alanlarından KPSS P3 puanı en az 80 olan 20 Kültür ve Turizm Uzman Yardımcısı alınacaktır.',
     is_active: true,
     created_at: '2026-11-24T08:00:00Z',
@@ -567,7 +567,7 @@ export const SAMPLE_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-turkak-1',
     source: 'KARIYER_KAPISI',
-    source_url: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+    source_url: 'https://www.turkak.org.tr',
     institution: 'Türk Akreditasyon Kurumu (TÜRKAK)',
     title: '3 Koruma ve Güvenlik Görevlisi Alım İlanı',
     publish_date: '2026-11-20',
@@ -697,7 +697,7 @@ export const SAMPLE_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-aybu-1',
     source: 'KARIYER_KAPISI',
-    source_url: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+    source_url: 'https://aybu.edu.tr/personel',
     institution: 'Ankara Yıldırım Beyazıt Üniversitesi',
     title: 'Sözleşmeli Bilişim Personeli Alım İlanı',
     publish_date: '2026-11-21',
@@ -758,7 +758,7 @@ export const SAMPLE_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-oran-1',
     source: 'KARIYER_KAPISI',
-    source_url: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+    source_url: 'https://oran.org.tr',
     institution: 'Orta Anadolu Kalkınma Ajansı (ORAN)',
     title: 'Uzman ve Destek Personeli Alım İlanı',
     publish_date: '2026-11-09',
@@ -824,7 +824,7 @@ export const SAMPLE_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-zafer-1',
     source: 'KARIYER_KAPISI',
-    source_url: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+    source_url: 'https://zafer.gov.tr',
     institution: 'Zafer Kalkınma Ajansı',
     title: 'Uzman Personel Alım İlanı',
     publish_date: '2026-11-20',
@@ -867,7 +867,7 @@ export const SAMPLE_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-dika-1',
     source: 'KARIYER_KAPISI',
-    source_url: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+    source_url: 'https://dika.org.tr',
     institution: 'Dicle Kalkınma Ajansı (DİKA)',
     title: 'Uzman Personel ve Hukuk Müşaviri Alım İlanı',
     publish_date: '2026-11-22',
@@ -928,7 +928,7 @@ export const SAMPLE_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-doka-1',
     source: 'KARIYER_KAPISI',
-    source_url: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+    source_url: 'https://doka.org.tr',
     institution: 'Doğu Karadeniz Kalkınma Ajansı (DOKA)',
     title: 'Uzman ve Destek Personeli Alım İlanı',
     publish_date: '2026-11-15',
@@ -1176,7 +1176,7 @@ export const SAMPLE_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-tga-1',
     source: 'KARIYER_KAPISI',
-    source_url: 'https://isealimkariyerkapisi.cbiko.gov.tr',
+    source_url: 'https://tga.gov.tr',
     institution: 'Türkiye Turizm Tanıtım ve Geliştirme Ajansı (TGA)',
     title: 'Personel Alım İlanı (Dijital İletişim, Pazarlama, Hukuk, Bilişim)',
     publish_date: '2026-11-20',
