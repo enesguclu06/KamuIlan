@@ -137,28 +137,42 @@ export default function AdminPage() {
         });
       }
 
-      // Ayrıca tekil profil kontrolü
+      // Ayrıca tekil aktif profil kontrolü (Giriş yapılmış olsun veya olmasın doldurulan gerçek profil)
       const singleAuth = localStorage.getItem('kamu_ilan_auth_session');
-      const singleProf = localStorage.getItem('kamu_ilan_user_profile_v2');
+      const singleProfRaw = localStorage.getItem('kamu_ilan_user_profile_v2') || localStorage.getItem('kamu_ilan_user_profile');
+      let activeProfile: any = null;
+      if (singleProfRaw) {
+        try {
+          const parsed = JSON.parse(singleProfRaw);
+          if (parsed && (parsed.department || parsed.kpss_score || parsed.full_name || parsed.education_level || parsed.residence_city || parsed.city)) {
+            activeProfile = parsed;
+          }
+        } catch {}
+      }
+
+      let emailFromAuth = '';
+      let nameFromAuth = '';
       if (singleAuth) {
-        const authData = JSON.parse(singleAuth);
-        if (authData?.email) {
-          const em = authData.email.toLowerCase().trim();
-          let profData = null;
-          if (singleProf) {
-            try { profData = JSON.parse(singleProf); } catch {}
-          }
-          if (!usersMap[em]) {
-            usersMap[em] = {
-              email: em,
-              fullName: authData.fullName || profData?.full_name || 'Enes Güçlü',
-              profile: profData,
-              favorites: [],
-              updatedAt: new Date().toISOString(),
-              source: 'CURRENT_SESSION',
-            };
-          }
-        }
+        try {
+          const a = JSON.parse(singleAuth);
+          if (a?.email) emailFromAuth = a.email.toLowerCase().trim();
+          if (a?.fullName) nameFromAuth = a.fullName;
+        } catch {}
+      }
+
+      if (activeProfile) {
+        const userEmail = emailFromAuth || activeProfile.email || 'Tarayıcıda Aktif Profil';
+        const userFullName = activeProfile.full_name || nameFromAuth || 'Kayıtlı Aday';
+        const key = (emailFromAuth || userFullName).toLowerCase().trim();
+
+        usersMap[key] = {
+          email: userEmail,
+          fullName: userFullName,
+          profile: activeProfile,
+          favorites: JSON.parse(localStorage.getItem('kamu_ilan_favs') || '[]'),
+          updatedAt: new Date().toISOString(),
+          source: 'AKTİF_KULLANICI_CV',
+        };
       }
     } catch (e) {
       console.warn('Yerel hesap okuma:', e);
@@ -187,31 +201,6 @@ export default function AdminPage() {
       }
     } catch (err) {
       console.warn('Sunucu kullanıcıları alınamadı:', err);
-    }
-
-    // Eğer hiç kayıt yoksa bile yönetici için Enes Güçlü profilini hazırla
-    if (Object.keys(usersMap).length === 0) {
-      usersMap['enesguclu06@gmail.com'] = {
-        email: 'enesguclu06@gmail.com',
-        fullName: 'Enes Güçlü',
-        profile: {
-          full_name: 'Enes Güçlü',
-          education_level: 'LISANS',
-          department: 'Bilgisayar Mühendisliği',
-          kpss_type: 'KPSSP3',
-          kpss_score: 82.5,
-          birth_date: '2000-06-15',
-          city: 'ANKARA',
-          preferred_cities: ['ANKARA', 'İSTANBUL', 'ESKİŞEHİR'],
-          yds_score: 75,
-          yds_level: 'C',
-          military_status: 'TECİLLİ',
-          height: 182,
-        },
-        favorites: ['ann-sayistay-1', 'ann-icisleri-1', 'ann-sgk-1'],
-        updatedAt: new Date().toISOString(),
-        source: 'SİSTEM_KAYITLI',
-      };
     }
 
     setRegisteredUsers(Object.values(usersMap));
@@ -638,7 +627,7 @@ export default function AdminPage() {
                           <div className="flex items-center justify-between">
                             <span className="text-slate-500 font-medium">İkamet / İl:</span>
                             <span className="font-semibold text-slate-700">
-                              {p.city || 'Belirtilmemiş'}
+                              {p.city || p.residence_city || 'Belirtilmemiş'}
                             </span>
                           </div>
 
@@ -719,7 +708,7 @@ export default function AdminPage() {
                       </div>
                       <div>
                         <span className="text-slate-400 block font-medium">İkamet Şehri</span>
-                        <strong className="text-slate-800">{selectedUserDetail.profile?.city || 'Belirtilmemiş'}</strong>
+                        <strong className="text-slate-800">{selectedUserDetail.profile?.city || selectedUserDetail.profile?.residence_city || 'Belirtilmemiş'}</strong>
                       </div>
                       <div>
                         <span className="text-slate-400 block font-medium">Doğum Tarihi / Yaş</span>

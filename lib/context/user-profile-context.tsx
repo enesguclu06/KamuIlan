@@ -170,6 +170,12 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         if (stored) activeEmail = JSON.parse(stored)?.email;
       } catch {}
     }
+    if (!activeEmail) {
+      // Eğer henüz giriş yapılmamışsa adayın kendi isminden veya sabit e-postadan yerel hesap oluştur
+      activeEmail = newProfile.full_name 
+        ? `${newProfile.full_name.toLowerCase().replace(/[^a-z0-9]/g, '')}@kamuilan.com` 
+        : 'enesguclu06@gmail.com';
+    }
 
     if (activeEmail) {
       const normEmail = activeEmail.toLowerCase().trim();
