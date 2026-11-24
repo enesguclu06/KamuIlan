@@ -78,6 +78,7 @@ export interface UserProfile {
   certificates?: string[];
   preferred_cities?: string[];
   residence_city?: string;
+  city?: string;
   telegram_chat_id?: string;
   notify_enabled?: boolean;
 }
