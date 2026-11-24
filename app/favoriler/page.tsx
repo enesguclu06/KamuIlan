@@ -56,9 +56,15 @@ export default function FavoritesPage() {
           }));
 
           const sampleIds = new Set(SAMPLE_ANNOUNCEMENTS.map(s => s.id));
+          const sampleUrls = new Set(SAMPLE_ANNOUNCEMENTS.map(s => s.source_url));
           const nowMs = Date.now();
           const uniqueLive = liveAnnouncements.filter(l => 
             !sampleIds.has(l.id) &&
+            !sampleUrls.has(l.source_url) &&
+            l.is_active === true &&
+            !l.title.includes('450 Sözleşmeli') &&
+            !l.title.includes('60 Sözleşmeli') &&
+            (l.source_url?.includes('.gov.tr') || l.source_url?.includes('.edu.tr') || l.source_url?.includes('resmigazete.gov.tr')) &&
             new Date(l.deadline).getTime() >= (nowMs - 24 * 60 * 60 * 1000)
           );
           setAnnouncements([...SAMPLE_ANNOUNCEMENTS, ...uniqueLive]);

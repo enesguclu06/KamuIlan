@@ -185,7 +185,8 @@ export function evaluateMatch(
   let kpssMatch = true;
   let kpssDetail = 'Uyumlu';
   if (position.kpss_type !== 'KPSS_YOK') {
-    if (!user.kpss_type || user.kpss_type !== position.kpss_type) {
+    const isP3Compatible = (position.kpss_type === 'KPSSP48' || position.kpss_type === 'KPSSP43' || position.kpss_type === 'KPSSP32') && user.kpss_type === 'KPSSP3';
+    if (!user.kpss_type || (user.kpss_type !== position.kpss_type && !isP3Compatible)) {
       isUnfit = true;
       kpssMatch = false;
       kpssDetail = `İlan ${position.kpss_type} istiyor, sizde ${user.kpss_type || 'Tanımsız'}`;

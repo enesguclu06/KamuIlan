@@ -1,5 +1,5 @@
 export type EducationLevel = 'LISE' | 'ONLISANS' | 'LISANS' | 'YUKSEK_LISANS';
-export type KpssType = 'KPSSP3' | 'KPSSP93' | 'KPSSP94' | 'KPSS_YOK';
+export type KpssType = 'KPSSP3' | 'KPSSP93' | 'KPSSP94' | 'KPSSP48' | 'KPSSP43' | 'KPSSP32' | 'KPSS_YOK' | string;
 export type AlesType = 'SAYISAL' | 'ESIT_AGIRLIK' | 'SOZEL';
 export type YdsLevel = 'YOK' | 'E' | 'D' | 'C' | 'B' | 'A';
 export type GenderRequirement = 'HEPSI' | 'ERKEK' | 'KADIN';
