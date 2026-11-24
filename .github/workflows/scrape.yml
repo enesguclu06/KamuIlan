@@ -42,11 +42,12 @@ jobs:
 
       - name: Scraper ve AI Parser Pipeline Çalıştır
         env:
+          PYTHONPATH: .
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://kamu-ilan.vercel.app' }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://kamuilan-one.vercel.app' }}
           GEMINI_MODEL_NAME: 'gemini-2.5-flash'
         run: |
           ARGS="--limit ${{ github.event.inputs.limit || '10' }}"
@@ -56,4 +57,4 @@ jobs:
           if [ -n "${{ github.event.inputs.test_url }}" ]; then
             ARGS="$ARGS --url ${{ github.event.inputs.test_url }}"
           fi
-          python scraper/main.py $ARGS
+          python -m scraper.main $ARGS
