@@ -146,39 +146,80 @@ export function evaluateMatch(
   let isUnfit = false;
   let isMaybe = false;
 
-  // 1. EĞİTİM SEVİYESİ
-  let eduMatch = true;
-  if (user.education_level) {
-    if (position.education_level === 'YUKSEK_LISANS' && user.education_level !== 'YUKSEK_LISANS') {
-      isUnfit = true;
-      eduMatch = false;
-      reasons.push(`Bu kadro Yüksek Lisans derecesi istemektedir. Profiliniz: ${user.education_level}`);
-    } else if (position.education_level === 'LISANS' && user.education_level !== 'LISANS' && user.education_level !== 'YUKSEK_LISANS') {
-      isUnfit = true;
-      eduMatch = false;
-      reasons.push(`Bu kadro 4 yıllık Lisans mezuniyeti istemektedir. Profiliniz: ${user.education_level}`);
-    } else if (position.education_level === 'ONLISANS' && user.education_level !== 'ONLISANS') {
-      isUnfit = true;
-      eduMatch = false;
-      reasons.push(`Bu kadro 2 yıllık Önlisans mezuniyeti istemektedir.`);
-    } else if (position.education_level === 'LISE' && user.education_level !== 'LISE') {
-      isUnfit = true;
-      eduMatch = false;
-      reasons.push(`Bu kadro ortaöğretim / lise düzeyindedir. Lisans mezunları lise kadrolarına başvuramaz.`);
+  // 1 & 2. EĞİTİM SEVİYESİ VE BÖLÜM KONTROLÜ (Çift / Çoklu Diploma Desteği)
+  const allUserEducations = [
+    {
+      level: user.education_level,
+      dept: user.department,
+      status: user.graduation_status,
+      label: '1. Diploma'
+    },
+    ...(user.additional_educations || []).map((ae, i) => ({
+      level: ae.education_level,
+      dept: ae.department,
+      status: ae.graduation_status,
+      label: `${i + 2}. Diploma`
+    }))
+  ].filter(e => Boolean(e.level || e.dept));
+
+  let eduMatch = false;
+  let deptMatch = false;
+  let matchedEducationLabel = '';
+
+  // Kullanıcının tüm diplomalarını tara; en az biri hem düzeyi hem de bölümü sağlıyorsa tam uyum sağla
+  for (const edu of allUserEducations) {
+    let currentEduLevelMatch = false;
+    if (edu.level) {
+      if (position.education_level === 'YUKSEK_LISANS' && edu.level === 'YUKSEK_LISANS') {
+        currentEduLevelMatch = true;
+      } else if (position.education_level === 'LISANS' && (edu.level === 'LISANS' || edu.level === 'YUKSEK_LISANS')) {
+        currentEduLevelMatch = true;
+      } else if (position.education_level === 'ONLISANS' && edu.level === 'ONLISANS') {
+        currentEduLevelMatch = true;
+      } else if (position.education_level === 'LISE' && edu.level === 'LISE') {
+        currentEduLevelMatch = true;
+      }
+    }
+
+    const currentDeptMatch = checkDepartmentMatch(
+      edu.dept,
+      position.allowed_departments ?? [],
+      position.is_any_department ?? false
+    );
+
+    if (currentEduLevelMatch && currentDeptMatch) {
+      eduMatch = true;
+      deptMatch = true;
+      matchedEducationLabel = `${edu.label} (${edu.dept} - ${edu.level})`;
+      break;
     }
   }
 
-  // 2. BÖLÜM
-  const deptMatch = checkDepartmentMatch(
-    user.department,
-    position.allowed_departments ?? [],
-    position.is_any_department ?? false
-  );
-  if (!deptMatch) {
-    isUnfit = true;
-    reasons.push(
-      `Bölümünüz (${user.department || 'Belirtilmemiş'}), bu kadro için kabul edilen bölümler arasında yer almıyor.`
-    );
+  // Eğer ikili tam uyum bulunamadıysa, ayrı ayrı en az birinin düzey veya bölümü tutup tutmadığına bak
+  if (!eduMatch || !deptMatch) {
+    for (const edu of allUserEducations) {
+      if (edu.level) {
+        if (position.education_level === 'YUKSEK_LISANS' && edu.level === 'YUKSEK_LISANS') eduMatch = true;
+        else if (position.education_level === 'LISANS' && (edu.level === 'LISANS' || edu.level === 'YUKSEK_LISANS')) eduMatch = true;
+        else if (position.education_level === 'ONLISANS' && edu.level === 'ONLISANS') eduMatch = true;
+        else if (position.education_level === 'LISE' && edu.level === 'LISE') eduMatch = true;
+      }
+      if (checkDepartmentMatch(edu.dept, position.allowed_departments ?? [], position.is_any_department ?? false)) {
+        deptMatch = true;
+      }
+    }
+
+    if (!eduMatch) {
+      isUnfit = true;
+      const userLevels = allUserEducations.map(e => e.level).filter(Boolean).join(', ');
+      reasons.push(`Bu kadro ${position.education_level} mezuniyeti istemektedir. Profilinizdeki düzeyler: ${userLevels || 'Girilmedi'}`);
+    }
+
+    if (!deptMatch) {
+      isUnfit = true;
+      const userDepts = allUserEducations.map(e => e.dept).filter(Boolean).join(' / ');
+      reasons.push(`Kayıtlı diplomalarınız (${userDepts || 'Belirtilmemiş'}), bu kadro için kabul edilen bölümler arasında yer almıyor.`);
+    }
   }
 
   // 3. KPSS PUANI VE TÜRÜ
@@ -395,12 +436,12 @@ export function evaluateMatch(
     criteriaMatrix: {
       education: {
         match: eduMatch,
-        user: user.education_level || 'Belirtilmedi',
+        user: matchedEducationLabel ? matchedEducationLabel : (user.education_level || 'Belirtilmedi'),
         required: position.education_level,
       },
       department: {
         match: deptMatch,
-        user: user.department || 'Belirtilmedi',
+        user: matchedEducationLabel ? matchedEducationLabel : (allUserEducations.map(e => e.dept).filter(Boolean).join(', ') || 'Belirtilmedi'),
         required: position.is_any_department ? 'Herhangi Bir Program' : position.allowed_departments.slice(0, 3).join(', ') || 'Belirtilmedi',
       },
       kpss: {

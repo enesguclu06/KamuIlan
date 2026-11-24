@@ -11,6 +11,24 @@ export type LanguageExamType = 'YDS' | 'YOKDIL' | 'E_YDS' | 'TOEFL' | 'YOK';
 export type SpecialStatus = 'ESKI_HUKUMLU' | 'TMY' | 'ENGELLI' | 'SEHIT_GAZI_YAKINI' | 'ISKUR_ONCELIK';
 export type InstitutionType = 'BAKANLIK' | 'UNIVERSITE' | 'BELEDIYE' | 'BANKA' | 'KIT' | 'DIGER';
 
+export interface EducationRecord {
+  id?: string;
+  education_level: EducationLevel;
+  department: string;
+  graduation_status: GraduationStatus;
+  graduation_year?: number;
+}
+
+export interface HistoricalScoreInfo {
+  title: string;
+  previous_osym_min?: number;
+  previous_osym_max?: number;
+  previous_sozlesmeli_min?: number;
+  previous_mulakat_call_min?: number;
+  year_reference: string;
+  notes: string;
+}
+
 export interface Department {
   id: string;
   name: string;
@@ -60,6 +78,7 @@ export interface Position {
   special_status_target?: SpecialStatus | null;
   requires_experience_years?: number | null;
   requires_computer_cert?: boolean;
+  historical_score?: HistoricalScoreInfo | null;
   created_at?: string;
 }
 
@@ -79,6 +98,7 @@ export interface UserProfile {
   graduation_status?: GraduationStatus;
   graduation_year?: number;
   expected_graduation_date?: string;
+  additional_educations?: EducationRecord[];
   kpss_type?: KpssType;
   kpss_score?: number;
   ales_type?: AlesType;

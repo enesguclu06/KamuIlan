@@ -21,10 +21,13 @@ import {
   Share2,
   ChevronDown,
   Info,
-  Heart
+  Heart,
+  TrendingUp,
+  BarChart2
 } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/WhatsAppIcon';
 import { openWhatsappShare } from '@/lib/share';
+import { getHistoricalScoreForPosition } from '@/lib/historical-scores';
 import { Announcement, Position, MatchEvaluation } from '@/types';
 import { SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -511,6 +514,63 @@ export default function AnnouncementDetailPage() {
                       </ul>
                     </div>
                   )}
+
+                  {/* GEÇMİŞ YIL TABAN PUAN ARŞİV BİLGİSİ */}
+                  {(() => {
+                    const hist = getHistoricalScoreForPosition(position);
+                    if (!hist) return null;
+                    const userScore = profile?.kpss_score;
+                    const refMin = hist.previous_sozlesmeli_min || hist.previous_osym_min;
+                    const isAbove = userScore && refMin && userScore >= refMin;
+
+                    return (
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 text-white space-y-2.5 shadow-md">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2">
+                          <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-300">
+                            <BarChart2 className="w-4 h-4 text-emerald-400" />
+                            <span>Geçmiş Yılların Taban Puan Referansı</span>
+                          </div>
+                          <span className="text-[10px] text-slate-300 bg-white/10 px-2 py-0.5 rounded font-mono">
+                            {hist.year_reference}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                          {hist.previous_osym_min && (
+                            <div className="bg-white/5 p-2 rounded-lg border border-white/10">
+                              <span className="text-[10px] text-slate-400 block">ÖSYM Merkezi Atama Tabanı:</span>
+                              <span className="text-base font-black text-white font-mono">{hist.previous_osym_min} Puan</span>
+                            </div>
+                          )}
+
+                          {hist.previous_sozlesmeli_min && (
+                            <div className="bg-white/5 p-2 rounded-lg border border-white/10">
+                              <span className="text-[10px] text-slate-400 block">Sözleşmeli / Mülakat Tabanı:</span>
+                              <span className="text-base font-black text-emerald-300 font-mono">{hist.previous_sozlesmeli_min} Puan</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                          {hist.notes}
+                        </p>
+
+                        {/* Kullanıcının Puan Kıyaslaması */}
+                        {userScore && refMin && (
+                          <div className={`mt-2 p-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${
+                            isAbove ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-200 border border-amber-500/30'
+                          }`}>
+                            <TrendingUp className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span>
+                              {isAbove 
+                                ? `Puanınız (${userScore}), bu kadronun geçmiş taban puanının (${refMin}) üzerindedir!` 
+                                : `Puanınız (${userScore}), geçmiş dönem tabanının (${refMin}) bir miktar altındadır.`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             );

@@ -764,6 +764,11 @@ export default function AdminPage() {
                             <span className="text-slate-500 font-medium">Bölüm:</span>
                             <span className="font-bold text-slate-900 text-right truncate max-w-[180px]">
                               {p.department || 'Bölüm Girilmemiş'}
+                              {p.additional_educations && p.additional_educations.length > 0 && (
+                                <span className="ml-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                  +{p.additional_educations.length} Ek Diploma
+                                </span>
+                              )}
                             </span>
                           </div>
 
@@ -972,6 +977,23 @@ export default function AdminPage() {
                         </strong>
                       </div>
                     </div>
+
+                    {/* Çift / Ek Diplomalar */}
+                    {selectedUserDetail.profile?.additional_educations && selectedUserDetail.profile.additional_educations.length > 0 && (
+                      <div className="pt-2 border-t border-slate-200">
+                        <span className="text-slate-400 block font-medium mb-1">Kayıtlı Ek Diplomalar (Çift Anadal / Önlisans & Lisans):</span>
+                        <div className="space-y-1.5">
+                          {selectedUserDetail.profile.additional_educations.map((edu, eIdx) => (
+                            <div key={eIdx} className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold flex items-center justify-between shadow-xs">
+                              <span className="text-slate-800">🎓 {eIdx + 2}. Diploma: <strong>{edu.department}</strong></span>
+                              <span className="text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded font-mono border border-emerald-200 font-bold">
+                                {edu.education_level} ({edu.graduation_status})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {selectedUserDetail.profile?.special_statuses && selectedUserDetail.profile.special_statuses.length > 0 && (
                       <div className="pt-2 border-t border-slate-200">

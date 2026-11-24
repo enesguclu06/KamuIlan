@@ -18,7 +18,9 @@ import {
   BookOpen,
   MapPin,
   ArrowRight,
-  RotateCcw
+  RotateCcw,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { useUserProfile } from '@/lib/context/user-profile-context';
 import { 
@@ -30,7 +32,8 @@ import {
   GraduationStatus, 
   MilitaryStatus,
   LanguageExamType,
-  SpecialStatus
+  SpecialStatus,
+  EducationRecord
 } from '@/types';
 import { POPULAR_DEPARTMENTS, SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
 import { computeAnnouncementMatch, calculateAge, scoreToYdsLevel } from '@/lib/matcher';
@@ -129,6 +132,7 @@ export default function ProfilePage() {
     experience_field: '',
     experience_years: undefined,
     has_sgk_service: false,
+    additional_educations: [],
     certificates: [],
     preferred_cities: [],
     residence_city: '',
@@ -154,6 +158,7 @@ export default function ProfilePage() {
         experience_field: profile.experience_field || '',
         experience_years: profile.experience_years ?? undefined,
         has_sgk_service: profile.has_sgk_service || false,
+        additional_educations: profile.additional_educations || [],
       }));
       setDepartmentSearch(profile.department || '');
     }
@@ -210,6 +215,33 @@ export default function ProfilePage() {
       yds_score: num,
       yds_level: autoLevel
     });
+  };
+
+  const handleAddEducation = () => {
+    const current = formData.additional_educations || [];
+    setFormData({
+      ...formData,
+      additional_educations: [
+        ...current,
+        {
+          education_level: 'ONLISANS',
+          department: '',
+          graduation_status: 'MEZUN',
+        }
+      ]
+    });
+  };
+
+  const handleUpdateEducation = (index: number, updated: Partial<EducationRecord>) => {
+    const current = [...(formData.additional_educations || [])];
+    current[index] = { ...current[index], ...updated };
+    setFormData({ ...formData, additional_educations: current });
+  };
+
+  const handleRemoveEducation = (index: number) => {
+    const current = [...(formData.additional_educations || [])];
+    current.splice(index, 1);
+    setFormData({ ...formData, additional_educations: current });
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -361,6 +393,98 @@ export default function ProfilePage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* İKİNCİ / EK DİPLOMALAR BÖLÜMÜ */}
+            {(formData.additional_educations || []).length > 0 && (
+              <div className="pt-4 border-t border-slate-100 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>🎓 İkinci Diploma / Ek Mezuniyetleriniz</span>
+                  </span>
+                  <span className="text-[11px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                    {formData.additional_educations?.length} Ek Diploma
+                  </span>
+                </div>
+
+                {formData.additional_educations?.map((edu, idx) => (
+                  <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 relative">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700">
+                        {idx + 2}. Diploma / Mezuniyet Bilgisi
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveEducation(idx)}
+                        className="text-xs text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Kaldır</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          Eğitim Düzeyi
+                        </label>
+                        <select
+                          value={edu.education_level || 'ONLISANS'}
+                          onChange={(e) => handleUpdateEducation(idx, { education_level: e.target.value as EducationLevel })}
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] bg-white font-medium"
+                        >
+                          <option value="LISANS">Lisans (4 Yıllık Fakülte)</option>
+                          <option value="ONLISANS">Önlisans (2 Yıllık MYO)</option>
+                          <option value="LISE">Ortaöğretim / Lise / Meslek Lisesi</option>
+                          <option value="YUKSEK_LISANS">Yüksek Lisans / Tezli YL</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          Mezuniyet Durumu
+                        </label>
+                        <select
+                          value={edu.graduation_status || 'MEZUN'}
+                          onChange={(e) => handleUpdateEducation(idx, { graduation_status: e.target.value as GraduationStatus })}
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] bg-white font-medium"
+                        >
+                          <option value="MEZUN">Mezun (Diplomamı Aldım)</option>
+                          <option value="OGRENCI">Halen Öğrenciyim</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                        Bölüm / Program Adı
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Örn: Adalet, İlahiyat, Bilgisayar Programcılığı, İktisat..."
+                        value={edu.department || ''}
+                        onChange={(e) => handleUpdateEducation(idx, { department: e.target.value })}
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] bg-white font-medium"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* İkinci Diploma Ekleme Aksiyon Butonu */}
+            <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+              <button
+                type="button"
+                onClick={handleAddEducation}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all border border-slate-200"
+              >
+                <Plus className="w-3.5 h-3.5 text-[#1b4332]" />
+                <span>+ İkinci Diploma / Ek Bölüm Ekle (Önlisans, Çift Anadal vb.)</span>
+              </button>
+              <span className="text-[11px] text-slate-400 hidden sm:inline">
+                Sistem her iki diplomanızı da ilanlarla eşleştirir.
+              </span>
             </div>
           </div>
 
@@ -929,6 +1053,7 @@ export default function ProfilePage() {
                     experience_field: '',
                     experience_years: 0,
                     has_sgk_service: false,
+                    additional_educations: [],
                     yds_level: 'YOK',
                     yds_score: undefined,
                   });
