@@ -24,6 +24,8 @@ import {
   Building2,
   RefreshCw,
   UserCheck,
+  UserX,
+  Trash2,
   Mail,
   Award,
   ChevronRight,
@@ -41,6 +43,8 @@ interface RegisteredUserItem {
   favorites?: string[];
   updatedAt?: string;
   source?: string;
+  isRegistered?: boolean;
+  registeredAt?: string;
 }
 
 export default function AdminPage() {
@@ -55,7 +59,9 @@ export default function AdminPage() {
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUserItem[]>([]);
   const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
   const [userSearchQuery, setUserSearchQuery] = useState<string>('');
+  const [userTypeFilter, setUserTypeFilter] = useState<'ALL' | 'REGISTERED' | 'GUEST'>('ALL');
   const [selectedUserDetail, setSelectedUserDetail] = useState<RegisteredUserItem | null>(null);
+  const [userActionMsg, setUserActionMsg] = useState<string>('');
 
   // İlanlar Listesi
   const [announcementsList] = useState<Announcement[]>(SAMPLE_ANNOUNCEMENTS);
@@ -126,53 +132,18 @@ export default function AdminPage() {
         const localDb = JSON.parse(dbRaw);
         Object.entries(localDb).forEach(([emailKey, data]: [string, any]) => {
           const em = emailKey.toLowerCase().trim();
+          const isRegistered = Boolean(data.isRegistered ?? (!em.includes('@yerel.kamuilan') && !em.startsWith('misafir_')));
           usersMap[em] = {
             email: em,
-            fullName: data.fullName || data.profile?.full_name || em.split('@')[0],
+            fullName: data.fullName || data.profile?.full_name || (isRegistered ? em.split('@')[0] : 'Misafir Aday'),
             profile: data.profile || null,
             favorites: data.favorites || [],
+            isRegistered,
+            registeredAt: data.registeredAt || data.updatedAt,
             updatedAt: data.updatedAt || new Date().toISOString(),
             source: 'LOCAL_STORAGE',
           };
         });
-      }
-
-      // Ayrıca tekil aktif profil kontrolü (Giriş yapılmış olsun veya olmasın doldurulan gerçek profil)
-      const singleAuth = localStorage.getItem('kamu_ilan_auth_session');
-      const singleProfRaw = localStorage.getItem('kamu_ilan_user_profile_v2') || localStorage.getItem('kamu_ilan_user_profile');
-      let activeProfile: any = null;
-      if (singleProfRaw) {
-        try {
-          const parsed = JSON.parse(singleProfRaw);
-          if (parsed && (parsed.department || parsed.kpss_score || parsed.full_name || parsed.education_level || parsed.residence_city || parsed.city)) {
-            activeProfile = parsed;
-          }
-        } catch {}
-      }
-
-      let emailFromAuth = '';
-      let nameFromAuth = '';
-      if (singleAuth) {
-        try {
-          const a = JSON.parse(singleAuth);
-          if (a?.email) emailFromAuth = a.email.toLowerCase().trim();
-          if (a?.fullName) nameFromAuth = a.fullName;
-        } catch {}
-      }
-
-      if (activeProfile) {
-        const userEmail = emailFromAuth || activeProfile.email || 'Tarayıcıda Aktif Profil';
-        const userFullName = activeProfile.full_name || nameFromAuth || 'Kayıtlı Aday';
-        const key = (emailFromAuth || userFullName).toLowerCase().trim();
-
-        usersMap[key] = {
-          email: userEmail,
-          fullName: userFullName,
-          profile: activeProfile,
-          favorites: JSON.parse(localStorage.getItem('kamu_ilan_favs') || '[]'),
-          updatedAt: new Date().toISOString(),
-          source: 'AKTİF_KULLANICI_CV',
-        };
       }
     } catch (e) {
       console.warn('Yerel hesap okuma:', e);
@@ -187,11 +158,14 @@ export default function AdminPage() {
           data.users.forEach((srvUser: any) => {
             const em = (srvUser.email || '').toLowerCase().trim();
             if (em) {
+              const isRegistered = Boolean(srvUser.isRegistered ?? (!em.includes('@yerel.kamuilan') && !em.startsWith('misafir_')));
               usersMap[em] = {
                 email: em,
-                fullName: srvUser.fullName || usersMap[em]?.fullName || em.split('@')[0],
+                fullName: srvUser.fullName || usersMap[em]?.fullName || srvUser.profile?.full_name || (isRegistered ? em.split('@')[0] : 'Misafir Aday'),
                 profile: srvUser.profile || usersMap[em]?.profile || null,
                 favorites: srvUser.favorites || usersMap[em]?.favorites || [],
+                isRegistered,
+                registeredAt: srvUser.registeredAt || usersMap[em]?.registeredAt || srvUser.updatedAt,
                 updatedAt: srvUser.updatedAt || usersMap[em]?.updatedAt,
                 source: srvUser.source || 'SERVER_DB',
               };
@@ -203,8 +177,95 @@ export default function AdminPage() {
       console.warn('Sunucu kullanıcıları alınamadı:', err);
     }
 
-    setRegisteredUsers(Object.values(usersMap));
+    // 3. Akıllı Tekilleştirme & Çift Kayıtları Temizleme (Deduplication)
+    // "Tarayıcıda Aktif Profil" gibi geçici/hayalet kayıtları eler, mükerrer adayları tek bir karta indirger
+    const rawList = Object.values(usersMap);
+    
+    // Gerçek kayıtlı hesapları öne al
+    rawList.sort((a, b) => {
+      if (a.isRegistered && !b.isRegistered) return -1;
+      if (!a.isRegistered && b.isRegistered) return 1;
+      return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+    });
+
+    const cleanedList: RegisteredUserItem[] = [];
+    const seenCandidateKeys = new Set<string>();
+
+    for (const u of rawList) {
+      // Sentetik veya hayalet kayıtları atla
+      if (u.email === 'Tarayıcıda Aktif Profil' || u.email === 'aktif_profil') {
+        continue;
+      }
+
+      const p = u.profile || {};
+      const normName = (u.fullName || p.full_name || '').toLowerCase().trim();
+      const normDept = (p.department || '').toLowerCase().trim();
+      const kpss = p.kpss_score || 0;
+      const candidateKey = `${normName}_${normDept}_${kpss}`;
+
+      if (normName && candidateKey !== '__0' && seenCandidateKeys.has(candidateKey)) {
+        // Zaten aynı kişinin kartı var; mükerrer misafir kaydını atla ve yerel depodan da temizle
+        if (u.email.includes('@yerel.kamuilan') || u.email.startsWith('misafir_')) {
+          try {
+            const dbRaw = localStorage.getItem('kamu_ilan_accounts_db');
+            if (dbRaw) {
+              const db = JSON.parse(dbRaw);
+              if (db[u.email]) {
+                delete db[u.email];
+                localStorage.setItem('kamu_ilan_accounts_db', JSON.stringify(db));
+              }
+            }
+          } catch {}
+        }
+        continue;
+      }
+
+      if (normName && candidateKey !== '__0') {
+        seenCandidateKeys.add(candidateKey);
+      }
+
+      cleanedList.push(u);
+    }
+
+    setRegisteredUsers(cleanedList);
     setLoadingUsers(false);
+  };
+
+  // Kullanıcıyı / Kaydı Silme (Yönetici Yetkisi)
+  const handleDeleteUser = async (emailToDelete: string) => {
+    if (!confirm(`"${emailToDelete}" aday kaydını kalıcı olarak silmek istediğinize emin misiniz?`)) {
+      return;
+    }
+
+    // 1. Tarayıcı LocalStorage'dan sil
+    try {
+      const dbRaw = localStorage.getItem('kamu_ilan_accounts_db');
+      if (dbRaw) {
+        const db = JSON.parse(dbRaw);
+        if (db[emailToDelete]) {
+          delete db[emailToDelete];
+          localStorage.setItem('kamu_ilan_accounts_db', JSON.stringify(db));
+        }
+      }
+    } catch {}
+
+    // 2. Sunucu API'sinden sil
+    try {
+      await fetch(`/api/admin/users?email=${encodeURIComponent(emailToDelete)}`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.warn('Sunucu kullanıcı silme hatası:', e);
+    }
+
+    // 3. UI State'ini anında güncelle
+    setRegisteredUsers(prev => prev.filter(u => u.email !== emailToDelete));
+    if (selectedUserDetail?.email === emailToDelete) {
+      setSelectedUserDetail(null);
+    }
+
+    setUserActionMsg(`"${emailToDelete}" kaydı başarıyla silindi.`);
+    setTimeout(() => setUserActionMsg(''), 4000);
   };
 
   useEffect(() => {
@@ -315,17 +376,34 @@ export default function AdminPage() {
     }, 0);
   }, [announcementsList]);
 
+  // Kullanıcı İstatistikleri
+  const registeredCount = useMemo(() => {
+    return registeredUsers.filter(u => u.isRegistered).length;
+  }, [registeredUsers]);
+
+  const guestCount = useMemo(() => {
+    return registeredUsers.filter(u => !u.isRegistered).length;
+  }, [registeredUsers]);
+
   // Kullanıcı Filtreleme
   const filteredUsers = useMemo(() => {
-    if (!userSearchQuery.trim()) return registeredUsers;
+    let list = registeredUsers;
+
+    if (userTypeFilter === 'REGISTERED') {
+      list = list.filter(u => u.isRegistered);
+    } else if (userTypeFilter === 'GUEST') {
+      list = list.filter(u => !u.isRegistered);
+    }
+
+    if (!userSearchQuery.trim()) return list;
     const q = userSearchQuery.toLowerCase();
-    return registeredUsers.filter(u => 
+    return list.filter(u => 
       u.fullName.toLowerCase().includes(q) ||
       u.email.toLowerCase().includes(q) ||
       (u.profile?.department && u.profile.department.toLowerCase().includes(q)) ||
       (u.profile?.city && u.profile.city.toLowerCase().includes(q))
     );
-  }, [registeredUsers, userSearchQuery]);
+  }, [registeredUsers, userSearchQuery, userTypeFilter]);
 
   // İlan Filtreleme
   const filteredAnnouncements = useMemo(() => {
@@ -468,8 +546,10 @@ export default function AdminPage() {
 
             <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
               <div className="text-slate-400 text-xs font-medium">Kayıtlı Aday Sayısı</div>
-              <div className="text-2xl font-black text-rose-300 mt-1">{registeredUsers.length} Kullanıcı</div>
-              <div className="text-[11px] text-rose-200/80 font-semibold mt-0.5">Bilgileri Girilmiş Profil</div>
+              <div className="text-2xl font-black text-rose-300 mt-1">{registeredUsers.length} Kişi</div>
+              <div className="text-[11px] text-rose-200/90 font-semibold mt-0.5">
+                {registeredCount} Kayıtlı Üye • {guestCount} Misafir
+              </div>
             </div>
 
             <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
@@ -478,7 +558,7 @@ export default function AdminPage() {
                 <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                 <span>Aktif & Canlı</span>
               </div>
-              <div className="text-[11px] text-slate-300 font-semibold mt-0.5">08:30 / 18:30 Oto-Tarama</div>
+              <div className="text-[11px] text-slate-300 font-semibold mt-0.5">08:30 Oto-Tarama (Sabah)</div>
             </div>
           </div>
         </div>
@@ -540,9 +620,22 @@ export default function AdminPage() {
         {activeTab === 'USERS' && (
           <div className="space-y-4">
             
-            {/* Arama & Filtre Çubuğu */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#e5dfd5] shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="relative w-full sm:w-96">
+            {/* Bildirim Mesajı (Silme vb.) */}
+            {userActionMsg && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between shadow-sm">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>{userActionMsg}</span>
+                </div>
+                <button onClick={() => setUserActionMsg('')} className="text-emerald-700 hover:text-emerald-900 text-xs font-bold">
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* Arama & Üyelik Durumu Filtre Çubuğu */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#e5dfd5] shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="relative w-full md:w-80">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
@@ -553,8 +646,46 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div className="text-xs text-slate-500 font-medium">
-                Toplam <strong className="text-slate-900">{filteredUsers.length}</strong> kayıtlı aday listeleniyor
+              {/* Filtreleme Hapları (Tümü / Kayıtlı Üyeler / Misafirler) */}
+              <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
+                <button
+                  onClick={() => setUserTypeFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    userTypeFilter === 'ALL'
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Tüm Adaylar ({registeredUsers.length})
+                </button>
+
+                <button
+                  onClick={() => setUserTypeFilter('REGISTERED')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                    userTypeFilter === 'REGISTERED'
+                      ? 'bg-emerald-700 text-white shadow-sm'
+                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+                  <span>Kayıtlı Üyeler ({registeredCount})</span>
+                </button>
+
+                <button
+                  onClick={() => setUserTypeFilter('GUEST')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                    userTypeFilter === 'GUEST'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
+                  <span>Misafir Adaylar ({guestCount})</span>
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-500 font-medium whitespace-nowrap">
+                Listelenen: <strong className="text-slate-900">{filteredUsers.length}</strong>
               </div>
             </div>
 
@@ -564,7 +695,9 @@ export default function AdminPage() {
                 <Users className="w-12 h-12 text-slate-300 mx-auto" />
                 <h3 className="text-base font-bold text-slate-800">Aramaya Uygun Aday Bulunamadı</h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Farklı bir arama terimi deneyebilir veya kullanıcıların profil doldurmasını bekleyebilirsin.
+                  {userTypeFilter !== 'ALL' 
+                    ? 'Seçtiğiniz filtreye uygun aday bulunmuyor. Filtreyi "Tüm Adaylar" yaparak tekrar deneyebilirsiniz.'
+                    : 'Henüz sisteme kayıtlı veya kriter doldurmuş bir aday bulunmuyor.'}
                 </p>
               </div>
             ) : (
@@ -572,33 +705,57 @@ export default function AdminPage() {
                 {filteredUsers.map((user, idx) => {
                   const p = user.profile || {};
                   const isProfileComplete = Boolean(p.department && p.education_level && (p.kpss_score || p.kpss_type));
+                  const displayEmail = user.email.includes('@yerel.kamuilan') || user.email.startsWith('misafir_')
+                    ? 'Kayıtsız Misafir Ziyaretçi'
+                    : user.email;
 
                   return (
                     <div 
                       key={user.email || idx}
                       className="bg-white rounded-2xl p-5 border border-[#e5dfd5] hover:border-slate-300 transition-all shadow-sm hover:shadow-md space-y-4 flex flex-col justify-between"
                     >
-                      {/* Üst Kısım: İsim ve E-posta */}
-                      <div className="space-y-2">
+                      {/* Üst Kısım: İsim, E-posta ve Durum Rozeti */}
+                      <div className="space-y-3">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-1.5">
                               <span>{user.fullName || p.full_name || 'İsimsiz Aday'}</span>
-                              <UserCheck className="w-4 h-4 text-emerald-600" />
+                              {user.isRegistered ? (
+                                <span title="Kayıtlı Üye" className="inline-flex">
+                                  <UserCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Misafir</span>
+                              )}
                             </h3>
-                            <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
-                              <Mail className="w-3.5 h-3.5 text-slate-400" />
-                              <span className="font-mono">{user.email}</span>
+                            <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                              <Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                              <span className={`font-mono truncate max-w-[200px] ${user.isRegistered ? 'text-slate-700 font-semibold' : 'text-slate-400'}`}>
+                                {displayEmail}
+                              </span>
                             </div>
                           </div>
 
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${
-                            isProfileComplete 
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}>
-                            {isProfileComplete ? 'Eksiksiz CV' : 'Kısmi Bilgi'}
-                          </span>
+                          <div className="flex flex-col items-end gap-1">
+                            {/* Kayıt Durumu Rozeti */}
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border flex items-center gap-1 ${
+                              user.isRegistered
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${user.isRegistered ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                              <span>{user.isRegistered ? 'Kayıtlı Üye' : 'Kayıtsız Misafir'}</span>
+                            </span>
+
+                            {/* CV Tamamlanma Rozeti */}
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide border ${
+                              isProfileComplete 
+                                ? 'bg-slate-50 text-slate-600 border-slate-200' 
+                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                            }`}>
+                              {isProfileComplete ? 'Eksiksiz CV' : 'Kısmi Bilgi'}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Kritik CV Bilgileri */}
@@ -647,19 +804,34 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      {/* Alt Kısım: Detay & Favoriler */}
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span className="text-[11px] text-slate-400">
-                          {user.favorites?.length || 0} Favori İlan
-                        </span>
+                      {/* Alt Kısım: Tarih, Favoriler & Aksiyonlar */}
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                        <div className="text-[11px] text-slate-400">
+                          <span>{user.favorites?.length || 0} Favori</span>
+                          {user.updatedAt && (
+                            <span className="ml-1.5 text-slate-400">
+                              • {new Date(user.updatedAt).toLocaleDateString('tr-TR')}
+                            </span>
+                          )}
+                        </div>
 
-                        <button
-                          onClick={() => setSelectedUserDetail(user)}
-                          className="px-3 py-1.5 rounded-lg bg-[#7f1d1d]/10 hover:bg-[#7f1d1d]/20 text-[#7f1d1d] font-bold text-xs transition-colors flex items-center gap-1"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Tam Profili Gör</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setSelectedUserDetail(user)}
+                            className="px-3 py-1.5 rounded-lg bg-[#7f1d1d]/10 hover:bg-[#7f1d1d]/20 text-[#7f1d1d] font-bold text-xs transition-colors flex items-center gap-1"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>İncele</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteUser(user.email)}
+                            className="p-1.5 rounded-lg hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors"
+                            title="Adayı / Kaydı Sil"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -670,14 +842,25 @@ export default function AdminPage() {
             {/* Seçili Kullanıcı Detay Modalı */}
             {selectedUserDetail && (
               <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl border border-slate-200">
+                <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="text-lg font-black text-slate-900">
-                        {selectedUserDetail.fullName || 'Aday Detayları'}
+                      <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                        <span>{selectedUserDetail.fullName || 'Aday Detayları'}</span>
+                        {selectedUserDetail.isRegistered ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Kayıtlı Üye
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200">
+                            Misafir Aday
+                          </span>
+                        )}
                       </h3>
-                      <p className="text-xs text-slate-500 font-mono mt-0.5">
-                        {selectedUserDetail.email}
+                      <p className="text-xs text-slate-500 font-mono mt-1">
+                        {selectedUserDetail.email.includes('@yerel.kamuilan') || selectedUserDetail.email.startsWith('misafir_')
+                          ? 'Kayıtsız Ziyaretçi (Şifreli hesabı henüz açılmamış)'
+                          : selectedUserDetail.email}
                       </p>
                     </div>
                     <button
@@ -691,6 +874,18 @@ export default function AdminPage() {
                   <div className="space-y-3 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
+                        <span className="text-slate-400 block font-medium">Üyelik / Hesap Durumu</span>
+                        <strong className={selectedUserDetail.isRegistered ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
+                          {selectedUserDetail.isRegistered ? 'Şifreli Kayıtlı Hesap' : 'Misafir / Kayıtsız Profil'}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block font-medium">Son İşlem / Güncelleme</span>
+                        <strong className="text-slate-800">
+                          {selectedUserDetail.updatedAt ? new Date(selectedUserDetail.updatedAt).toLocaleString('tr-TR') : 'Bilinmiyor'}
+                        </strong>
+                      </div>
+                      <div>
                         <span className="text-slate-400 block font-medium">Eğitim Düzeyi</span>
                         <strong className="text-slate-800">{selectedUserDetail.profile?.education_level || 'Belirtilmemiş'}</strong>
                       </div>
@@ -702,7 +897,7 @@ export default function AdminPage() {
                         <span className="text-slate-400 block font-medium">KPSS Puanı & Türü</span>
                         <strong className="text-emerald-700">
                           {selectedUserDetail.profile?.kpss_score 
-                            ? `${selectedUserDetail.profile.kpss_score} (${selectedUserDetail.profile.kpss_type})` 
+                            ? `${selectedUserDetail.profile.kpss_score} (${selectedUserDetail.profile.kpss_type || 'KPSSP3'})` 
                             : 'Girilmemiş'}
                         </strong>
                       </div>
@@ -711,7 +906,7 @@ export default function AdminPage() {
                         <strong className="text-slate-800">{selectedUserDetail.profile?.city || selectedUserDetail.profile?.residence_city || 'Belirtilmemiş'}</strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block font-medium">Doğum Tarihi / Yaş</span>
+                        <span className="text-slate-400 block font-medium">Doğum Tarihi</span>
                         <strong className="text-slate-800">{selectedUserDetail.profile?.birth_date || 'Belirtilmemiş'}</strong>
                       </div>
                       <div>
@@ -723,7 +918,7 @@ export default function AdminPage() {
                       <div>
                         <span className="text-slate-400 block font-medium">Yabancı Dil (YDS)</span>
                         <strong className="text-slate-800">
-                          {selectedUserDetail.profile?.yds_score ? `${selectedUserDetail.profile.yds_score} Puan` : 'Yok'}
+                          {selectedUserDetail.profile?.yds_score ? `${selectedUserDetail.profile.yds_score} Puan (${selectedUserDetail.profile.yds_level || 'Belge'})` : 'Yok'}
                         </strong>
                       </div>
                       <div>
@@ -744,12 +939,33 @@ export default function AdminPage() {
                         </div>
                       </div>
                     )}
+
+                    {selectedUserDetail.profile?.certificates && selectedUserDetail.profile.certificates.length > 0 && (
+                      <div className="pt-2 border-t border-slate-200">
+                        <span className="text-slate-400 block font-medium mb-1">Sahip Olduğu Ehliyet & Sertifikalar:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {selectedUserDetail.profile.certificates.map(cert => (
+                            <span key={cert} className="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold text-[10px]">
+                              {cert}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="text-right">
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      onClick={() => handleDeleteUser(selectedUserDetail.email)}
+                      className="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all flex items-center gap-1.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Bu Kaydı Sistemden Sil</span>
+                    </button>
+
                     <button
                       onClick={() => setSelectedUserDetail(null)}
-                      className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800"
+                      className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all"
                     >
                       Kapat
                     </button>

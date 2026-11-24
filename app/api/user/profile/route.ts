@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, profile, favorites, fullName } = body;
+    const { email, profile, favorites, fullName, isRegistered, registeredAt } = body;
 
     if (!email) {
       return NextResponse.json({ error: 'E-posta adresi zorunludur.' }, { status: 400 });
@@ -77,11 +77,17 @@ export async function POST(req: NextRequest) {
     loadProfilesFromFile();
 
     const existing = memoryProfiles[normEmail] || {};
+    const computedIsRegistered = isRegistered !== undefined 
+      ? Boolean(isRegistered) 
+      : (existing.isRegistered !== undefined ? existing.isRegistered : (!normEmail.includes('@yerel.kamuilan') && !normEmail.startsWith('misafir_')));
+
     memoryProfiles[normEmail] = {
       email: normEmail,
-      fullName: fullName || profile?.full_name || existing.fullName || normEmail.split('@')[0],
+      fullName: fullName || profile?.full_name || existing.fullName || (computedIsRegistered ? normEmail.split('@')[0] : 'Misafir Aday'),
       profile: profile || existing.profile,
       favorites: favorites || existing.favorites || [],
+      isRegistered: computedIsRegistered,
+      registeredAt: registeredAt || existing.registeredAt || (computedIsRegistered ? new Date().toISOString() : undefined),
       updatedAt: new Date().toISOString(),
     };
 
@@ -92,8 +98,30 @@ export async function POST(req: NextRequest) {
       message: 'Profil sunucuda başarıyla kaydedildi.',
       profile: memoryProfiles[normEmail].profile,
       favorites: memoryProfiles[normEmail].favorites,
+      isRegistered: computedIsRegistered,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Profil kaydetme hatası' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const email = searchParams.get('email')?.toLowerCase().trim();
+
+    if (!email) {
+      return NextResponse.json({ error: 'E-posta zorunludur.' }, { status: 400 });
+    }
+
+    loadProfilesFromFile();
+    if (memoryProfiles[email]) {
+      delete memoryProfiles[email];
+      saveProfilesToFile();
+    }
+
+    return NextResponse.json({ success: true, message: 'Kullanıcı profili silindi.' });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Silme hatası' }, { status: 500 });
   }
 }

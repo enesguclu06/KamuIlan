@@ -58,6 +58,9 @@ export interface Position {
 
 export interface UserProfile {
   user_id?: string;
+  email?: string;
+  is_registered?: boolean;
+  registered_at?: string;
   full_name?: string;
   birth_date?: string;
   gender?: 'ERKEK' | 'KADIN' | 'BELIRTILMEMIS';

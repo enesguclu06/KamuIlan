@@ -163,7 +163,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     }
 
     // 2. Aktif e-posta hesabına özel hesap veritabanına kaydet
-    let activeEmail = userEmail;
+    let activeEmail = userEmail || newProfile.email;
     if (!activeEmail) {
       try {
         const stored = localStorage.getItem(AUTH_KEY);
@@ -185,13 +185,16 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
 
     if (activeEmail) {
       const normEmail = activeEmail.toLowerCase().trim();
+      const isAccountRegistered = Boolean(isLoggedIn || (!normEmail.includes('@yerel.kamuilan') && !normEmail.startsWith('misafir_')));
+
       try {
         const dbRaw = localStorage.getItem(ACCOUNTS_DB_KEY) || '{}';
         const db = JSON.parse(dbRaw);
         db[normEmail] = {
           profile: newProfile,
           favorites,
-          fullName: newProfile.full_name || normEmail.split('@')[0],
+          fullName: newProfile.full_name || (isAccountRegistered ? normEmail.split('@')[0] : 'Misafir Aday'),
+          isRegistered: isAccountRegistered,
           updatedAt: new Date().toISOString(),
         };
         localStorage.setItem(ACCOUNTS_DB_KEY, JSON.stringify(db));
@@ -209,6 +212,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
             profile: newProfile,
             favorites,
             fullName: newProfile.full_name,
+            isRegistered: isAccountRegistered,
           }),
         }).catch((err) => console.warn('Sunucuya profil yazma isteği hatası:', err));
       } catch {}
@@ -279,12 +283,49 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       } catch {}
     }
 
-    // 3. Kullanıcının önceden kaydettiği bilgiler varsa KESİNLİKLE EZME, OLDUĞU GİBİ GERİ YÜKLE!
+    // 2.5. Eğer bu hesap için önceden kayıt yoksa ancak kullanıcı daha önce misafir olarak kriter/CV doldurmuşsa,
+    // o kriterleri kaybetmeden bu yeni açılan hesaba aktar!
+    if (!existingProfile) {
+      try {
+        const localCurrent = localStorage.getItem(STORAGE_KEY);
+        if (localCurrent) {
+          const parsed = JSON.parse(localCurrent);
+          if (parsed && (parsed.department || parsed.kpss_score || parsed.education_level)) {
+            existingProfile = {
+              ...parsed,
+              full_name: fullName || parsed.full_name || normEmail.split('@')[0],
+              email: normEmail,
+              is_registered: true,
+            };
+          }
+        }
+      } catch {}
+    }
+
+    // Eski misafir anahtarını yerel hesap DB'sinden temizle (çift kayıt ve misafir kopyası kalmasın!)
+    try {
+      const anonId = localStorage.getItem('kamu_ilan_anon_id');
+      if (anonId) {
+        const dbRaw = localStorage.getItem(ACCOUNTS_DB_KEY);
+        if (dbRaw) {
+          const db = JSON.parse(dbRaw);
+          if (db[anonId]) {
+            delete db[anonId];
+            localStorage.setItem(ACCOUNTS_DB_KEY, JSON.stringify(db));
+          }
+        }
+        localStorage.removeItem('kamu_ilan_anon_id');
+        fetch(`/api/admin/users?email=${encodeURIComponent(anonId)}`, { method: 'DELETE' }).catch(() => {});
+      }
+    } catch {}
+
+    // 3. Kullanıcının önceden kaydettiği veya aktarılan bilgiler varsa KESİNLİKLE EZME, OLDUĞU GİBİ GERİ YÜKLE!
     if (existingProfile && (existingProfile.department || existingProfile.kpss_score || existingProfile.education_level)) {
       setProfile(existingProfile);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(existingProfile));
       } catch {}
+      await updateProfile(existingProfile);
       return;
     }
 
@@ -292,6 +333,8 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     const candidateName = fullName?.trim() || normEmail.split('@')[0];
     const newProfile: UserProfile = {
       full_name: candidateName,
+      email: normEmail,
+      is_registered: true,
       education_level: defaultCriteria?.education_level || 'LISANS',
       department: defaultCriteria?.department || '',
       graduation_status: defaultCriteria?.graduation_status || 'MEZUN',
