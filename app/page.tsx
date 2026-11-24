@@ -289,6 +289,12 @@ export default function HomePage() {
     return evaluatedAnnouncements.filter(a => a.matchSummary.maybeCount > 0).length;
   }, [evaluatedAnnouncements, hasProfileFilled]);
 
+  // Yalnızca sistemde gerçekten var olan aktif favori ilanların sayısı
+  const validFavoritesCount = useMemo(() => {
+    const validIds = new Set(announcements.map(a => a.id));
+    return Array.from(new Set(favorites)).filter(id => validIds.has(id)).length;
+  }, [announcements, favorites]);
+
   // Gerçek ilanlara göre anlık dinamik şehir sayıları
   const dynamicCityCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -483,7 +489,15 @@ export default function HomePage() {
           {/* Favorilerim Quick Pill */}
           <button
             type="button"
-            onClick={() => setOnlyFavorites(!onlyFavorites)}
+            onClick={() => {
+              const next = !onlyFavorites;
+              setOnlyFavorites(next);
+              if (next) {
+                setFilterSuitable(false);
+                setFilterMaybe(false);
+                setOnlyUpcoming(false);
+              }
+            }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
               onlyFavorites
                 ? 'bg-rose-600 text-white shadow-sm'
@@ -492,7 +506,7 @@ export default function HomePage() {
           >
             <Heart className={`w-3.5 h-3.5 ${onlyFavorites ? 'fill-white text-white' : 'text-rose-500 fill-rose-500'}`} />
             <span className={onlyFavorites ? 'text-rose-100 font-bold' : 'text-slate-400 font-bold'}>FAVORİLERİM:</span>
-            <span className={`font-bold font-mono ${onlyFavorites ? 'text-white' : 'text-rose-600'}`}>{favorites.length}</span>
+            <span className={`font-bold font-mono ${onlyFavorites ? 'text-white' : 'text-rose-600'}`}>{validFavoritesCount}</span>
           </button>
 
           <button
@@ -588,16 +602,18 @@ export default function HomePage() {
                   onClick={() => {
                     setFilterSuitable(false);
                     setFilterMaybe(false);
+                    setOnlyFavorites(false);
+                    setOnlyUpcoming(false);
                   }}
                   className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
-                    !filterSuitable && !filterMaybe
+                    !filterSuitable && !filterMaybe && !onlyFavorites && !onlyUpcoming
                       ? 'bg-slate-900 text-white shadow-sm'
                       : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
                   }`}
                 >
                   <span>Tüm Açık İlanlar</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                    !filterSuitable && !filterMaybe ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                    !filterSuitable && !filterMaybe && !onlyFavorites && !onlyUpcoming ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {announcements.length}
                   </span>
@@ -610,6 +626,7 @@ export default function HomePage() {
                       router.push('/profil');
                       return;
                     }
+                    setOnlyFavorites(false);
                     setFilterSuitable(!filterSuitable);
                   }}
                   className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
@@ -636,6 +653,7 @@ export default function HomePage() {
                       router.push('/profil');
                       return;
                     }
+                    setOnlyFavorites(false);
                     setFilterMaybe(!filterMaybe);
                   }}
                   className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
@@ -658,7 +676,10 @@ export default function HomePage() {
                 {/* Gelecek İlanlar Toggle */}
                 <button
                   type="button"
-                  onClick={() => setOnlyUpcoming(!onlyUpcoming)}
+                  onClick={() => {
+                    setOnlyFavorites(false);
+                    setOnlyUpcoming(!onlyUpcoming);
+                  }}
                   className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
                     onlyUpcoming
                       ? 'bg-blue-600 text-white shadow-md'
@@ -679,7 +700,15 @@ export default function HomePage() {
                 {/* Favoriler Toggle */}
                 <button
                   type="button"
-                  onClick={() => setOnlyFavorites(!onlyFavorites)}
+                  onClick={() => {
+                    const next = !onlyFavorites;
+                    setOnlyFavorites(next);
+                    if (next) {
+                      setFilterSuitable(false);
+                      setFilterMaybe(false);
+                      setOnlyUpcoming(false);
+                    }
+                  }}
                   className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
                     onlyFavorites
                       ? 'bg-rose-600 text-white shadow-md'
@@ -693,7 +722,7 @@ export default function HomePage() {
                   <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
                     onlyFavorites ? 'bg-white/20 text-white' : 'bg-white text-rose-900'
                   }`}>
-                    {favorites.length} İlan
+                    {validFavoritesCount} İlan
                   </span>
                 </button>
               </div>

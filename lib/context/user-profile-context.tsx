@@ -3,6 +3,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile } from '@/types';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
+
+function sanitizeFavorites(rawList: any[]): string[] {
+  if (!Array.isArray(rawList)) return [];
+  const validIds = new Set(SAMPLE_ANNOUNCEMENTS.map((a) => a.id));
+  const unique = Array.from(new Set(rawList));
+  return unique.filter((id) => typeof id === 'string' && validIds.has(id));
+}
 
 interface UserProfileContextType {
   profile: UserProfile | null;
@@ -93,9 +101,10 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
             if (data?.found && data?.profile) {
               foundProfile = data.profile;
               if (data.favorites && Array.isArray(data.favorites)) {
-                setFavorites(data.favorites);
+                const cleaned = sanitizeFavorites(data.favorites);
+                setFavorites(cleaned);
                 try {
-                  localStorage.setItem(FAVS_KEY, JSON.stringify(data.favorites));
+                  localStorage.setItem(FAVS_KEY, JSON.stringify(cleaned));
                 } catch {}
               }
             }
@@ -138,8 +147,14 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         const storedFavs = localStorage.getItem(FAVS_KEY);
         if (storedFavs) {
           const parsedFavs = JSON.parse(storedFavs);
-          if (Array.isArray(parsedFavs) && parsedFavs.length > 0) {
-            setFavorites(parsedFavs);
+          if (Array.isArray(parsedFavs)) {
+            const cleaned = sanitizeFavorites(parsedFavs);
+            setFavorites(cleaned);
+            if (cleaned.length !== parsedFavs.length) {
+              try {
+                localStorage.setItem(FAVS_KEY, JSON.stringify(cleaned));
+              } catch {}
+            }
           }
         }
       } catch (e) {
@@ -259,9 +274,10 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         if (data?.found && data?.profile) {
           existingProfile = data.profile;
           if (data.favorites && Array.isArray(data.favorites)) {
-            setFavorites(data.favorites);
+            const cleaned = sanitizeFavorites(data.favorites);
+            setFavorites(cleaned);
             try {
-              localStorage.setItem(FAVS_KEY, JSON.stringify(data.favorites));
+              localStorage.setItem(FAVS_KEY, JSON.stringify(cleaned));
             } catch {}
           }
         }
@@ -376,7 +392,13 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
-      const next = prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id];
+      const set = new Set(prev);
+      if (set.has(id)) {
+        set.delete(id);
+      } else {
+        set.add(id);
+      }
+      const next = sanitizeFavorites(Array.from(set));
       try {
         localStorage.setItem(FAVS_KEY, JSON.stringify(next));
       } catch (e) {

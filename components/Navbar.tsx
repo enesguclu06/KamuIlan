@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -21,6 +21,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useUserProfile } from '@/lib/context/user-profile-context';
+import { SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -91,6 +92,11 @@ export function Navbar() {
   ];
 
   const unreadCount = NOTIFICATIONS.filter(n => !readNotificationIds.includes(n.id) && n.unread).length;
+
+  const validFavoritesCount = useMemo(() => {
+    const validIds = new Set(SAMPLE_ANNOUNCEMENTS.map(a => a.id));
+    return Array.from(new Set(favorites)).filter(id => validIds.has(id)).length;
+  }, [favorites]);
 
   const isUserActive = isLoggedIn || hasProfileFilled;
 
@@ -237,10 +243,10 @@ export function Navbar() {
               className="relative p-2 rounded-full hover:bg-[#ece7df] text-slate-600 transition-colors"
               title="Favori İlanlarım"
             >
-              <Heart className={`w-5 h-5 ${favorites.length > 0 ? 'fill-rose-500 text-rose-500' : 'text-slate-600'}`} />
-              {favorites.length > 0 && (
+              <Heart className={`w-5 h-5 ${validFavoritesCount > 0 ? 'fill-rose-500 text-rose-500' : 'text-slate-600'}`} />
+              {validFavoritesCount > 0 && (
                 <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
-                  {favorites.length}
+                  {validFavoritesCount}
                 </span>
               )}
             </Link>
@@ -321,9 +327,9 @@ export function Navbar() {
                         <Heart className="w-3.5 h-3.5 text-rose-500" />
                         <span>Favori İlanlarım</span>
                       </div>
-                      {favorites.length > 0 && (
+                      {validFavoritesCount > 0 && (
                         <span className="text-[10px] bg-rose-100 text-rose-700 font-mono font-bold px-1.5 py-0.5 rounded-full">
-                          {favorites.length}
+                          {validFavoritesCount}
                         </span>
                       )}
                     </Link>
@@ -504,7 +510,7 @@ export function Navbar() {
                 <span>Favori İlanlarım</span>
               </div>
               <span className="text-[10px] bg-rose-200 text-rose-800 font-mono px-2 py-0.5 rounded-full">
-                {favorites.length}
+                {validFavoritesCount}
               </span>
             </Link>
             {isUserActive ? (
