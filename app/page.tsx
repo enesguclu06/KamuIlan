@@ -39,28 +39,18 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { useUserProfile } from '@/lib/context/user-profile-context';
 import { computeAnnouncementMatch } from '@/lib/matcher';
 
-const CITY_COUNTS: Record<string, number> = {
-  'ANKARA': 48,
-  'İSTANBUL': 54,
-  'İZMİR': 24,
-  'BURSA': 18,
-  'ANTALYA': 15,
-  'ADANA': 12,
-  'KONYA': 14,
-  'DİYARBAKIR': 11,
-  'GAZİANTEP': 13,
-  'SAMSUN': 9,
-  'TRABZON': 8,
-  'KAYSERİ': 10,
-  'ESKİŞEHİR': 12,
-  'ŞANLIURFA': 9,
-  'VAN': 7,
-  'ERZURUM': 8,
-  'MERSİN': 11,
-  'KOCAELİ': 14,
-  'AFYONKARAHİSAR': 9,
-  'TÜRKİYE GENELİ': 85,
-};
+const ALL_TURKEY_CITIES = [
+  'ADANA', 'ADIYAMAN', 'AFYONKARAHİSAR', 'AĞRI', 'AMASYA', 'ANKARA', 'ANTALYA', 'ARTVİN',
+  'AYDIN', 'BALIKESİR', 'BİLECİK', 'BİNGÖL', 'BİTLİS', 'BOLU', 'BURDUR', 'BURSA', 'ÇANAKKALE',
+  'ÇANKIRI', 'ÇORUM', 'DENİZLİ', 'DİYARBAKIR', 'EDİRNE', 'ELAZIĞ', 'ERZİNCAN', 'ERZURUM',
+  'ESKİŞEHİR', 'GAZİANTEP', 'GİRESUN', 'GÜMÜŞHANE', 'HAKKARİ', 'HATAY', 'ISPARTA', 'MERSİN',
+  'İSTANBUL', 'İZMİR', 'KARS', 'KASTAMONU', 'KAYSERİ', 'KIRKLARELİ', 'KIRŞEHİR', 'KOCAELİ',
+  'KONYA', 'KÜTAHYA', 'MALATYA', 'MANİSA', 'KAHRAMANMARAŞ', 'MARDİN', 'MUĞLA', 'MUŞ',
+  'NEVŞEHİR', 'NİĞDE', 'ORDU', 'RİZE', 'SAKARYA', 'SAMSUN', 'SİİRT', 'SİNOP', 'SİVAS',
+  'TEKİRDAĞ', 'TOKAT', 'TRABZON', 'TUNCELİ', 'ŞANLIURFA', 'UŞAK', 'VAN', 'YOZGAT', 'ZONGULDAK',
+  'AKSARAY', 'BAYBURT', 'KARAMAN', 'KIRIKKALE', 'BATMAN', 'ŞIRNAK', 'BARTIN', 'ARDAHAN',
+  'IĞDIR', 'YALOVA', 'KARABÜK', 'KİLİS', 'OSMANİYE', 'DÜZCE'
+];
 
 export default function HomePage() {
   const router = useRouter();
@@ -79,6 +69,7 @@ export default function HomePage() {
   const [filterMaybe, setFilterMaybe] = useState(false);
   const [onlyUpcoming, setOnlyUpcoming] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [sortOption, setSortOption] = useState<'DEADLINE' | 'NEWEST' | 'QUOTA'>('DEADLINE');
   const [activeStatTab, setActiveStatTab] = useState<'ANNOUNCEMENTS' | 'POSITIONS' | 'INSTITUTIONS'>('ANNOUNCEMENTS');
 
@@ -222,6 +213,19 @@ export default function HomePage() {
         if (!matchesExam) return false;
       }
 
+      // 6. Çalışma Şekli Filtresi
+      if (selectedWorkTypes.length > 0) {
+        const text = `${item.title} ${item.raw_summary || ''} ${(item.positions || []).map(p => p.title).join(' ')}`.toLowerCase();
+        const matchesWorkType = selectedWorkTypes.some((wt) => {
+          if (wt === 'SOZLESMELI') return text.includes('sözleşmeli') || text.includes('4/b') || text.includes('4-b');
+          if (wt === 'ISCI') return text.includes('işçi') || text.includes('4/d') || text.includes('şoför') || text.includes('temizlik') || text.includes('güvenlik');
+          if (wt === 'AKADEMIK') return text.includes('öğretim') || text.includes('akademik') || text.includes('araştırma görevlisi') || text.includes('doçent') || text.includes('profesör');
+          if (wt === 'MEMUR') return !text.includes('işçi') && !text.includes('öğretim görevlisi');
+          return true;
+        });
+        if (!matchesWorkType) return false;
+      }
+
       return true;
     });
 
@@ -239,7 +243,7 @@ export default function HomePage() {
     }
 
     return list;
-  }, [evaluatedAnnouncements, onlyFavorites, favorites, onlyUpcoming, filterSuitable, filterMaybe, hasProfileFilled, searchQuery, selectedCities, selectedEduLevel, selectedExamType, sortOption]);
+  }, [evaluatedAnnouncements, onlyFavorites, favorites, onlyUpcoming, filterSuitable, filterMaybe, hasProfileFilled, searchQuery, selectedCities, selectedWorkTypes, selectedEduLevel, selectedExamType, sortOption]);
 
   const totalPositionsCount = useMemo(() => {
     return announcements.reduce((sum, a) => sum + (a.positions || []).reduce((s, p) => s + p.quota, 0), 0);
@@ -276,12 +280,81 @@ export default function HomePage() {
     return evaluatedAnnouncements.filter(a => a.matchSummary.maybeCount > 0).length;
   }, [evaluatedAnnouncements, hasProfileFilled]);
 
-  // Şehir listesi ve arama
+  // Gerçek ilanlara göre anlık dinamik şehir sayıları
+  const dynamicCityCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    announcements.forEach((ann) => {
+      const citySet = new Set<string>();
+      (ann.positions || []).forEach((pos) => {
+        (pos.cities || []).forEach((c) => {
+          if (c && c.trim()) citySet.add(c.trim().toUpperCase());
+        });
+      });
+      if (citySet.size === 0) {
+        citySet.add('TÜRKİYE GENELİ');
+      }
+      citySet.forEach((c) => {
+        counts[c] = (counts[c] || 0) + 1;
+      });
+    });
+    return counts;
+  }, [announcements]);
+
+  // Dinamik çalışma şekli sayıları
+  const workTypeCounts = useMemo(() => {
+    let memur = 0;
+    let sozlesmeli = 0;
+    let isci = 0;
+    let akademik = 0;
+
+    announcements.forEach((ann) => {
+      const text = `${ann.title} ${ann.raw_summary || ''} ${(ann.positions || []).map(p => p.title).join(' ')}`.toLowerCase();
+      if (text.includes('sözleşmeli') || text.includes('4/b') || text.includes('4-b')) {
+        sozlesmeli++;
+      } else if (text.includes('işçi') || text.includes('4/d') || text.includes('şoför') || text.includes('temizlik') || text.includes('güvenlik')) {
+        isci++;
+      } else if (text.includes('öğretim') || text.includes('akademik') || text.includes('araştırma görevlisi') || text.includes('doçent') || text.includes('profesör')) {
+        akademik++;
+      } else {
+        memur++;
+      }
+    });
+
+    return {
+      'MEMUR': memur,
+      'SOZLESMELI': sozlesmeli,
+      'ISCI': isci,
+      'AKADEMIK': akademik,
+    };
+  }, [announcements]);
+
+  // Şehir listesi ve arama: Aktif ilanı olanlar en başta, sayıya göre sıralı
   const filteredCityList = useMemo(() => {
-    const allCities = Object.keys(CITY_COUNTS);
-    if (!citySearch.trim()) return allCities;
-    return allCities.filter(c => c.toLowerCase().includes(citySearch.toLowerCase()));
-  }, [citySearch]);
+    const activeCities = Object.keys(dynamicCityCounts).sort((a, b) => {
+      if (a === 'TÜRKİYE GENELİ') return -1;
+      if (b === 'TÜRKİYE GENELİ') return 1;
+      return (dynamicCityCounts[b] || 0) - (dynamicCityCounts[a] || 0);
+    });
+
+    if (!citySearch.trim()) {
+      return activeCities;
+    }
+
+    const q = citySearch.toLowerCase();
+    const searchCombined = Array.from(new Set([...activeCities, ...ALL_TURKEY_CITIES]));
+    return searchCombined.filter(c => c.toLowerCase().includes(q));
+  }, [dynamicCityCounts, citySearch]);
+
+  const activeFiltersCount = useMemo(() => {
+    return (filterSuitable ? 1 : 0) +
+      (filterMaybe ? 1 : 0) +
+      (onlyUpcoming ? 1 : 0) +
+      (onlyFavorites ? 1 : 0) +
+      selectedCities.length +
+      selectedWorkTypes.length +
+      (selectedEduLevel ? 1 : 0) +
+      (selectedExamType ? 1 : 0);
+  }, [filterSuitable, filterMaybe, onlyUpcoming, onlyFavorites, selectedCities, selectedWorkTypes, selectedEduLevel, selectedExamType]);
 
   const handleCityToggle = (city: string) => {
     if (selectedCities.includes(city)) {
@@ -474,13 +547,37 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* MOBİL FİLTRE AÇ/KAPAT ÇUBUĞU */}
+        <div className="lg:hidden mb-4">
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-white rounded-2xl border border-[#e5dfd5] shadow-sm font-bold text-xs text-slate-800 hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-[#1b4332]" />
+              <span className="font-extrabold">Filtreleme Seçenekleri (İl, Pozisyon, Sınav)</span>
+              {activeFiltersCount > 0 && (
+                <span className="bg-[#1b4332] text-white text-[10px] px-2 py-0.5 rounded-full font-mono">
+                  {activeFiltersCount} Aktif
+                </span>
+              )}
+            </div>
+            <span className="text-xs text-[#1b4332] font-bold">
+              {mobileFiltersOpen ? 'Filtreleri Gizle ▲' : 'Filtreleri Aç ▼'}
+            </span>
+          </button>
+        </div>
+
         {/* ============================================================================== */}
         {/* İKİ KOLONLU ANA ALAN (SOL: FİLTRELER | SAĞ: İLAN AKIŞI) */}
         {/* ============================================================================== */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* SOL FİLTRELEME PANELİ (3 KOLON) */}
-          <aside className="lg:col-span-3 bg-white p-5 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-6 sticky top-20">
+          <aside className={`lg:col-span-3 bg-white p-5 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-6 lg:sticky lg:top-20 z-10 ${
+            mobileFiltersOpen ? 'block' : 'hidden lg:block'
+          }`}>
             
             {/* 1. UYGUNLUK DURUMU (3 SEÇENEKLİ FİLTRE) */}
             <div className="space-y-2">
@@ -632,7 +729,7 @@ export default function HomePage() {
               <div className="max-h-44 overflow-y-auto space-y-1 pr-1 text-xs">
                 {filteredCityList.map((city) => {
                   const isChecked = selectedCities.includes(city);
-                  const count = CITY_COUNTS[city] || 5;
+                  const count = dynamicCityCounts[city] || 0;
                   return (
                     <label
                       key={city}
@@ -659,23 +756,52 @@ export default function HomePage() {
 
             {/* 3. ÇALIŞMA ŞEKLİ */}
             <div className="space-y-2 pt-2 border-t border-slate-100">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">ÇALIŞMA ŞEKLİ</span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">ÇALIŞMA ŞEKLİ</span>
+                {selectedWorkTypes.length > 0 && (
+                  <button
+                    onClick={() => setSelectedWorkTypes([])}
+                    className="text-[11px] text-rose-600 font-semibold hover:underline"
+                  >
+                    Temizle ({selectedWorkTypes.length})
+                  </button>
+                )}
+              </div>
               <div className="space-y-1 text-xs">
                 {[
-                  { label: 'Memur (657 4/A)', count: 45 },
-                  { label: 'Sözleşmeli Personel (4/B)', count: 112 },
-                  { label: 'Sürekli İşçi (4/D)', count: 91 },
-                  { label: 'Akademik Personel', count: 80 },
-                  { label: 'KİT Sözleşmeli', count: 18 },
-                ].map((item, i) => (
-                  <label key={i} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-slate-700">
-                    <div className="flex items-center gap-2">
-                      <input type="checkbox" className="rounded text-[#1b4332] focus:ring-0 w-3.5 h-3.5" />
-                      <span>{item.label}</span>
-                    </div>
-                    <span className="text-[10px] font-mono text-slate-400">{item.count}</span>
-                  </label>
-                ))}
+                  { key: 'SOZLESMELI', label: 'Sözleşmeli Personel (4/B)', count: workTypeCounts.SOZLESMELI },
+                  { key: 'ISCI', label: 'Sürekli İşçi (4/D)', count: workTypeCounts.ISCI },
+                  { key: 'MEMUR', label: 'Memur (657 4/A)', count: workTypeCounts.MEMUR },
+                  { key: 'AKADEMIK', label: 'Akademik Personel', count: workTypeCounts.AKADEMIK },
+                ].map((item) => {
+                  const isChecked = selectedWorkTypes.includes(item.key);
+                  return (
+                    <label
+                      key={item.key}
+                      onClick={() => {
+                        if (isChecked) {
+                          setSelectedWorkTypes(selectedWorkTypes.filter((w) => w !== item.key));
+                        } else {
+                          setSelectedWorkTypes([...selectedWorkTypes, item.key]);
+                        }
+                      }}
+                      className={`flex items-center justify-between p-1.5 rounded-lg cursor-pointer transition-colors ${
+                        isChecked ? 'bg-emerald-50 text-[#1b4332] font-bold' : 'hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          readOnly
+                          className="rounded text-[#1b4332] focus:ring-0 w-3.5 h-3.5"
+                        />
+                        <span>{item.label}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-400">{item.count}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
 
@@ -731,6 +857,7 @@ export default function HomePage() {
               type="button"
               onClick={() => {
                 setSelectedCities([]);
+                setSelectedWorkTypes([]);
                 setSelectedEduLevel('');
                 setSelectedExamType('');
                 setFilterSuitable(false);

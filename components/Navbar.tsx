@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -29,6 +29,23 @@ export function Navbar() {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
+
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        // Desktop dışı tıklandığında kapat
+        setNotificationsOpen(false);
+      }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setUserDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const NOTIFICATIONS = [
     {
@@ -90,6 +107,92 @@ export function Navbar() {
 
   const displayName = profile?.full_name || (userEmail ? userEmail.split('@')[0] : (isLoggedIn ? 'Kullanıcı' : ''));
 
+  const renderNotificationsContent = () => (
+    <div className="w-full max-w-sm sm:max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 py-3 text-xs">
+      {/* Başlık */}
+      <div className="px-4 pb-2.5 border-b border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="font-extrabold text-slate-900 text-sm">Bildirimler</span>
+          {unreadCount > 0 && (
+            <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">
+              {unreadCount} Yeni
+            </span>
+          )}
+        </div>
+        {unreadCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setReadNotificationIds(NOTIFICATIONS.map(n => n.id))}
+            className="text-[11px] text-[#1b4332] font-bold hover:underline"
+          >
+            Tümünü Okundu Say
+          </button>
+        )}
+      </div>
+
+      {/* Bildirim Listesi */}
+      <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+        {NOTIFICATIONS.map((notif) => {
+          const isRead = readNotificationIds.includes(notif.id) || !notif.unread;
+          return (
+            <Link
+              key={notif.id}
+              href={notif.href}
+              onClick={() => {
+                if (!readNotificationIds.includes(notif.id)) {
+                  setReadNotificationIds(prev => [...prev, notif.id]);
+                }
+                setNotificationsOpen(false);
+              }}
+              className={`block p-3.5 hover:bg-slate-50 transition-colors ${
+                !isRead ? 'bg-amber-50/40' : ''
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="font-bold text-slate-900 text-xs">
+                  {notif.title}
+                </span>
+                <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                  {notif.time}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 mt-1 line-clamp-2 leading-relaxed">
+                {notif.desc}
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${
+                  notif.color === 'blue'
+                    ? 'bg-blue-100 text-blue-800'
+                    : notif.color === 'amber'
+                    ? 'bg-amber-100 text-amber-900'
+                    : notif.color === 'emerald'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-purple-100 text-purple-800'
+                }`}>
+                  {notif.tag}
+                </span>
+                {!isRead && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                )}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Alt Bilgi */}
+      <div className="pt-2 px-4 border-t border-slate-100 text-center">
+        <Link
+          href="/"
+          onClick={() => setNotificationsOpen(false)}
+          className="text-[11px] font-bold text-[#1b4332] hover:underline"
+        >
+          Tüm Güncel İlanları Görüntüle →
+        </Link>
+      </div>
+    </div>
+  );
+
   return (
     <header className="sticky top-0 z-50 bg-[#faf8f5] border-b border-[#ece7df] text-slate-800">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -143,7 +246,7 @@ export function Navbar() {
             </Link>
 
             {/* Bildirim Çanı & Popover */}
-            <div className="relative">
+            <div ref={notificationsRef} className="relative">
               <button
                 type="button"
                 onClick={() => {
@@ -164,95 +267,15 @@ export function Navbar() {
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 py-3 z-50 text-xs">
-                  {/* Başlık */}
-                  <div className="px-4 pb-2.5 border-b border-slate-100 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-slate-900 text-sm">Bildirimler</span>
-                      {unreadCount > 0 && (
-                        <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">
-                          {unreadCount} Yeni
-                        </span>
-                      )}
-                    </div>
-                    {unreadCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setReadNotificationIds(NOTIFICATIONS.map(n => n.id))}
-                        className="text-[11px] text-[#1b4332] font-bold hover:underline"
-                      >
-                        Tümünü Okundu Say
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Bildirim Listesi */}
-                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
-                    {NOTIFICATIONS.map((notif) => {
-                      const isRead = readNotificationIds.includes(notif.id) || !notif.unread;
-                      return (
-                        <Link
-                          key={notif.id}
-                          href={notif.href}
-                          onClick={() => {
-                            if (!readNotificationIds.includes(notif.id)) {
-                              setReadNotificationIds(prev => [...prev, notif.id]);
-                            }
-                            setNotificationsOpen(false);
-                          }}
-                          className={`block p-3.5 hover:bg-slate-50 transition-colors ${
-                            !isRead ? 'bg-amber-50/40' : ''
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="font-bold text-slate-900 text-xs">
-                              {notif.title}
-                            </span>
-                            <span className="text-[10px] text-slate-400 whitespace-nowrap">
-                              {notif.time}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-600 mt-1 line-clamp-2 leading-relaxed">
-                            {notif.desc}
-                          </p>
-                          <div className="mt-2 flex items-center gap-2">
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${
-                              notif.color === 'blue'
-                                ? 'bg-blue-100 text-blue-800'
-                                : notif.color === 'amber'
-                                ? 'bg-amber-100 text-amber-900'
-                                : notif.color === 'emerald'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-purple-100 text-purple-800'
-                            }`}>
-                              {notif.tag}
-                            </span>
-                            {!isRead && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                            )}
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-
-                  {/* Alt Bilgi */}
-                  <div className="pt-2 px-4 border-t border-slate-100 text-center">
-                    <Link
-                      href="/"
-                      onClick={() => setNotificationsOpen(false)}
-                      className="text-[11px] font-bold text-[#1b4332] hover:underline"
-                    >
-                      Tüm Güncel İlanları Görüntüle →
-                    </Link>
-                  </div>
+                <div className="absolute right-0 mt-2 z-50">
+                  {renderNotificationsContent()}
                 </div>
               )}
             </div>
 
             {isUserActive ? (
               /* Kullanıcı / Aday Menüsü */
-              <div className="relative">
+              <div ref={userDropdownRef} className="relative">
                 <button
                   type="button"
                   onClick={() => {
@@ -359,10 +382,45 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile Menu Toggle */}
-          <div className="flex md:hidden items-center gap-2">
+          {/* Mobile Actions: Favoriler, Bildirimler & Menü */}
+          <div className="flex md:hidden items-center gap-1">
+            <Link
+              href="/favoriler"
+              className="relative p-2 rounded-full hover:bg-[#ece7df] text-slate-600 transition-colors"
+              title="Favori İlanlarım"
+            >
+              <Heart className={`w-5 h-5 ${favorites.length > 0 ? 'fill-rose-500 text-rose-500' : 'text-slate-600'}`} />
+              {favorites.length > 0 && (
+                <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">
+                  {favorites.length}
+                </span>
+              )}
+            </Link>
+
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              type="button"
+              onClick={() => {
+                setNotificationsOpen(!notificationsOpen);
+                if (mobileMenuOpen) setMobileMenuOpen(false);
+              }}
+              className={`relative p-2 rounded-full transition-colors ${
+                notificationsOpen ? 'bg-[#ece7df] text-slate-900' : 'hover:bg-[#ece7df] text-slate-600'
+              }`}
+              title="Bildirimler"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-amber-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                setMobileMenuOpen(!mobileMenuOpen);
+                if (notificationsOpen) setNotificationsOpen(false);
+              }}
               className="p-2 rounded-lg text-slate-700 hover:bg-slate-200"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -370,6 +428,19 @@ export function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* Mobil Bildirim Paneli Açılır Kartı */}
+      {notificationsOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[1px] md:hidden"
+            onClick={() => setNotificationsOpen(false)}
+          />
+          <div className="md:hidden fixed top-16 left-3 right-3 z-50 flex justify-center">
+            {renderNotificationsContent()}
+          </div>
+        </>
+      )}
 
       {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
