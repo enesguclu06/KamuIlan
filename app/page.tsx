@@ -375,15 +375,6 @@ export default function HomePage() {
 
   return (
     <div className="bg-[#faf8f5] min-h-screen text-slate-800 pb-16">
-      
-      {/* 1. ÜST BİLGİLENDİRME ŞERİDİ (MEMURYOLU STİLİ) */}
-      <div className="bg-[#fcedeb] border-b border-[#f3d4ce] text-slate-700 text-xs py-2 px-4 text-center">
-        <span>Resmî Gazete ve Kariyer Kapısı alımları her sabah otomatik güncellenir • </span>
-        <Link href="/tanitim" className="font-bold text-[#1b4332] hover:underline">
-          Nasıl Çalışır? Detaylı İncele ↗
-        </Link>
-      </div>
-
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
         
         {/* BAŞLIK VE AÇIKLAMA */}
