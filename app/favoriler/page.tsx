@@ -56,7 +56,11 @@ export default function FavoritesPage() {
           }));
 
           const sampleIds = new Set(SAMPLE_ANNOUNCEMENTS.map(s => s.id));
-          const uniqueLive = liveAnnouncements.filter(l => !sampleIds.has(l.id));
+          const nowMs = Date.now();
+          const uniqueLive = liveAnnouncements.filter(l => 
+            !sampleIds.has(l.id) &&
+            new Date(l.deadline).getTime() >= (nowMs - 24 * 60 * 60 * 1000)
+          );
           setAnnouncements([...SAMPLE_ANNOUNCEMENTS, ...uniqueLive]);
         }
       } catch (err) {

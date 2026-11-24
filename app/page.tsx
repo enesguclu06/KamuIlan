@@ -103,10 +103,15 @@ export default function HomePage() {
             }))
             .filter((a: any) => (a.positions || []).length > 0);
 
-          // SAMPLE_ANNOUNCEMENTS'i daima temel al, veritabanındaki yeni ilanları üstüne ekle
+          // SAMPLE_ANNOUNCEMENTS'i daima temel al, veritabanındaki yeni ilanları üstüne ekle (süresi geçmiş olanları alma)
           const sampleUrls = new Set(SAMPLE_ANNOUNCEMENTS.map(s => s.source_url));
           const sampleTitles = new Set(SAMPLE_ANNOUNCEMENTS.map(s => s.title));
-          const extraFromDb = normalizedDb.filter((a: any) => !sampleUrls.has(a.source_url) && !sampleTitles.has(a.title));
+          const nowMs = Date.now();
+          const extraFromDb = normalizedDb.filter((a: any) => 
+            !sampleUrls.has(a.source_url) && 
+            !sampleTitles.has(a.title) &&
+            new Date(a.deadline).getTime() >= (nowMs - 24 * 60 * 60 * 1000)
+          );
 
           setAnnouncements([...SAMPLE_ANNOUNCEMENTS, ...extraFromDb]);
         }
