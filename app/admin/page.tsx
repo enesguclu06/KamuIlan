@@ -795,10 +795,40 @@ export default function AdminPage() {
                             </div>
                           )}
 
-                          {p.yds_score && (
+                          {p.yds_score ? (
                             <div className="flex items-center justify-between">
                               <span className="text-slate-500 font-medium">Yabancı Dil:</span>
-                              <span className="font-semibold text-slate-700">{p.yds_score} Puan ({p.yds_level || 'Belge'})</span>
+                              <span className="font-semibold text-slate-700">
+                                {p.language_exam_type || 'YDS'} ({p.foreign_language || 'İngilizce'}): {p.yds_score} Puan ({p.yds_level || 'Belge'})
+                              </span>
+                            </div>
+                          ) : p.yds_level && p.yds_level !== 'YOK' ? (
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-500 font-medium">Yabancı Dil:</span>
+                              <span className="font-semibold text-slate-700">{p.yds_level} Düzeyi</span>
+                            </div>
+                          ) : null}
+
+                          {p.special_statuses && p.special_statuses.length > 0 && (
+                            <div className="pt-1 flex flex-wrap gap-1">
+                              {p.special_statuses.map(st => (
+                                <span key={st} className="px-1.5 py-0.5 rounded bg-purple-50 border border-purple-200 text-purple-700 text-[9px] font-bold">
+                                  {st === 'ESKI_HUKUMLU' ? 'Eski Hükümlü' : (st === 'TMY' ? 'TMY Malul' : (st === 'ENGELLI' ? 'Engelli' : (st === 'SEHIT_GAZI_YAKINI' ? 'Şehit/Gazi Yakını' : 'İŞKUR Öncelikli')))}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {p.has_computer_course && (
+                            <div className="text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold flex items-center gap-1">
+                              <span>💻 Transkript Onaylı Bilgisayar Dersi Var</span>
+                            </div>
+                          )}
+
+                          {p.experience_years !== undefined && p.experience_years > 0 && (
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-500 font-medium">Tecrübe:</span>
+                              <span className="font-bold text-slate-800">{p.experience_years} Yıl ({p.experience_field || 'Mesleki'})</span>
                             </div>
                           )}
                         </div>
@@ -916,16 +946,45 @@ export default function AdminPage() {
                         </strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block font-medium">Yabancı Dil (YDS)</span>
+                        <span className="text-slate-400 block font-medium">Yabancı Dil</span>
                         <strong className="text-slate-800">
-                          {selectedUserDetail.profile?.yds_score ? `${selectedUserDetail.profile.yds_score} Puan (${selectedUserDetail.profile.yds_level || 'Belge'})` : 'Yok'}
+                          {selectedUserDetail.profile?.yds_score 
+                            ? `${selectedUserDetail.profile?.language_exam_type || 'YDS'} (${selectedUserDetail.profile?.foreign_language || 'İngilizce'} - ${selectedUserDetail.profile?.language_exam_year || ''}): ${selectedUserDetail.profile.yds_score} Puan (${selectedUserDetail.profile.yds_level || 'Belge'})` 
+                            : (selectedUserDetail.profile?.yds_level && selectedUserDetail.profile.yds_level !== 'YOK' ? `${selectedUserDetail.profile.yds_level} Düzeyi` : 'Girilmemiş')}
                         </strong>
                       </div>
                       <div>
                         <span className="text-slate-400 block font-medium">Askerlik Durumu</span>
                         <strong className="text-slate-800">{selectedUserDetail.profile?.military_status || 'Belirtilmemiş'}</strong>
                       </div>
+                      <div>
+                        <span className="text-slate-400 block font-medium">Bilgisayar Dersi (Transkript)</span>
+                        <strong className={selectedUserDetail.profile?.has_computer_course ? 'text-emerald-700' : 'text-slate-600'}>
+                          {selectedUserDetail.profile?.has_computer_course ? '✓ Okulda Dersi Aldı (Kamuda Geçerli)' : 'Hayır / Belirtilmedi'}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block font-medium">Mesleki Tecrübe</span>
+                        <strong className="text-slate-800">
+                          {selectedUserDetail.profile?.experience_years 
+                            ? `${selectedUserDetail.profile.experience_years} Yıl (${selectedUserDetail.profile.experience_field || 'Mesleki'}) ${selectedUserDetail.profile.has_sgk_service ? '• SGK Onaylı' : ''}` 
+                            : 'Deneyim Yok'}
+                        </strong>
+                      </div>
                     </div>
+
+                    {selectedUserDetail.profile?.special_statuses && selectedUserDetail.profile.special_statuses.length > 0 && (
+                      <div className="pt-2 border-t border-slate-200">
+                        <span className="text-slate-400 block font-medium mb-1">Özel Statü Durumu:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {selectedUserDetail.profile.special_statuses.map(st => (
+                            <span key={st} className="px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 font-bold text-[10px]">
+                              {st === 'ESKI_HUKUMLU' ? 'Eski Hükümlü' : (st === 'TMY' ? 'Terörle Mücadelede Malul (TMY)' : (st === 'ENGELLI' ? 'Engelli Kontenjanı' : (st === 'SEHIT_GAZI_YAKINI' ? 'Şehit / Gazi Yakını' : 'İŞKUR Öncelik Hakkı')))}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {selectedUserDetail.profile?.preferred_cities && selectedUserDetail.profile.preferred_cities.length > 0 && (
                       <div className="pt-2 border-t border-slate-200">

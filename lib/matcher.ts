@@ -323,7 +323,7 @@ export function evaluateMatch(
     }
   }
 
-  // 10. ÖZEL ŞARTLAR / SERTİFİKALAR (Bilgilendirme Amaçlı)
+  // 10. ÖZEL ŞARTLAR, SERTİFİKALAR, BİLGİSAYAR DERSİ VE TECRÜBE
   const pendingConditions: string[] = [];
   if (position.special_conditions && position.special_conditions.length > 0) {
     const userCerts = (user.certificates || []).map(normalizeTurkish);
@@ -331,12 +331,38 @@ export function evaluateMatch(
     for (const cond of position.special_conditions) {
       const normCond = normalizeTurkish(cond);
 
-      // Eğer boy şartıysa ve kullanıcının boyu gereksinimi karşılıyorsa, şartı karşılandı say
+      // A) Eğer boy şartıysa ve kullanıcının boyu gereksinimi karşılıyorsa, şartı karşılandı say
       const isHeightCond = normCond.includes('boy') || normCond.includes('1.67') || normCond.includes('1.60') || normCond.includes('167') || normCond.includes('160');
       if (isHeightCond && user.height && requiredMinHeight && user.height >= requiredMinHeight) {
         continue;
       }
 
+      // B) Bilgisayar Dersi Transkript Kuralı (MEB Bilgisayar Sertifikası Muafiyeti)
+      const isComputerCond = normCond.includes('bilgisayar') && (normCond.includes('sertifika') || normCond.includes('isletmen') || normCond.includes('meb'));
+      if (isComputerCond && (user.has_computer_course || userCerts.some(c => c.includes('bilgisayar')))) {
+        continue;
+      }
+
+      // C) Tecrübe / Deneyim Şartı Kuralı
+      const isExpCond = normCond.includes('tecrube') || normCond.includes('deneyim') || normCond.includes('sgk');
+      if (isExpCond && (user.experience_years || 0) >= (position.requires_experience_years || 1)) {
+        continue;
+      }
+
+      // D) Özel Statü Şartı (Engelli, Eski Hükümlü, TMY, Şehit Yakını)
+      let specialStatusMatched = false;
+      if (user.special_statuses && user.special_statuses.length > 0) {
+        if ((normCond.includes('eski hukumlu') || normCond.includes('hukumlu')) && user.special_statuses.includes('ESKI_HUKUMLU')) specialStatusMatched = true;
+        if ((normCond.includes('tmy') || normCond.includes('terorle mucadele')) && user.special_statuses.includes('TMY')) specialStatusMatched = true;
+        if (normCond.includes('engelli') && user.special_statuses.includes('ENGELLI')) specialStatusMatched = true;
+        if ((normCond.includes('sehit') || normCond.includes('gazi')) && user.special_statuses.includes('SEHIT_GAZI_YAKINI')) specialStatusMatched = true;
+        if (normCond.includes('iskur oncelik') && user.special_statuses.includes('ISKUR_ONCELIK')) specialStatusMatched = true;
+      }
+      if (specialStatusMatched) {
+        continue;
+      }
+
+      // E) Sertifikalar Listesi Eşleşmesi
       const hasCert = userCerts.some(c => normCond.includes(c) || c.includes(normCond));
       if (!hasCert) {
         pendingConditions.push(cond);

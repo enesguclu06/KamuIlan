@@ -7,6 +7,9 @@ export type ExamType = 'MULAKAT' | 'KPSS_PUAN_USTUNLUGU' | 'UYGULAMALI' | 'KURUM
 export type GraduationStatus = 'MEZUN' | 'OGRENCI';
 export type MilitaryStatus = 'YAPILDI' | 'MUAFIYET' | 'TECİLLİ' | 'YOK';
 export type MatchStatus = 'UYGUN' | 'BELKI' | 'UYMADI';
+export type LanguageExamType = 'YDS' | 'YOKDIL' | 'E_YDS' | 'TOEFL' | 'YOK';
+export type SpecialStatus = 'ESKI_HUKUMLU' | 'TMY' | 'ENGELLI' | 'SEHIT_GAZI_YAKINI' | 'ISKUR_ONCELIK';
+export type InstitutionType = 'BAKANLIK' | 'UNIVERSITE' | 'BELEDIYE' | 'BANKA' | 'KIT' | 'DIGER';
 
 export interface Department {
   id: string;
@@ -17,9 +20,10 @@ export interface Department {
 
 export interface Announcement {
   id: string;
-  source: 'RESMI_GAZETE' | 'KARIYER_KAPISI' | 'MANUEL';
+  source: 'RESMI_GAZETE' | 'KARIYER_KAPISI' | 'BANKA' | 'MANUEL';
   source_url: string;
   institution: string;
+  institution_type?: InstitutionType;
   title: string;
   publish_date: string;
   application_start_date?: string;
@@ -53,6 +57,9 @@ export interface Position {
   cities: string[];
   special_conditions: string[];
   exam_type: ExamType;
+  special_status_target?: SpecialStatus | null;
+  requires_experience_years?: number | null;
+  requires_computer_cert?: boolean;
   created_at?: string;
 }
 
@@ -76,9 +83,26 @@ export interface UserProfile {
   kpss_score?: number;
   ales_type?: AlesType;
   ales_score?: number;
+
+  // Yabancı Dil Detayları (YDS, YÖKDİL, e-YDS, Dil Türü, Yıl, Otomatik Seviye)
   yds_level?: YdsLevel;
   yds_score?: number;
+  language_exam_type?: LanguageExamType;
+  foreign_language?: string;
+  language_exam_year?: number;
+
+  // Özel Statü (Görseldeki gibi: Eski hükümlü, TMY, Engelli, Şehit yakını, İŞKUR öncelik)
+  special_statuses?: SpecialStatus[];
+
+  // Ek Belgeler & Bilgisayar Dersi Transkript Onayı
+  has_computer_course?: boolean;
   certificates?: string[];
+
+  // Tecrübe & Mesleki Deneyim
+  experience_field?: string;
+  experience_years?: number;
+  has_sgk_service?: boolean;
+
   preferred_cities?: string[];
   residence_city?: string;
   city?: string;

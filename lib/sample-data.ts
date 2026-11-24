@@ -1837,6 +1837,203 @@ export const SAMPLE_ANNOUNCEMENTS: Announcement[] = [
     ],
   },
 
+  // 17. T.C. ZİRAAT BANKASI A.Ş. (Kamu Bankası İşe Alım İlanı)
+  {
+    id: 'ann-ziraat-bankasi-1',
+    source: 'BANKA',
+    institution_type: 'BANKA',
+    source_url: 'https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar',
+    institution: 'T.C. Ziraat Bankası A.Ş.',
+    title: 'T.C. ZİRAAT BANKASI A.Ş. - MÜFETTİŞ YARDIMCISI VE UZMAN YARDIMCISI ALIMI',
+    publish_date: '2026-11-20',
+    application_start_date: '2026-11-20T09:00:00Z',
+    deadline: '2026-12-15T23:59:00Z',
+    application_method: 'e-Devlet / Kariyer Kapısı Kamu İşe Alım (https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar) — Son Başvuru: 15 Aralık 2026',
+    raw_summary: 'T.C. Ziraat Bankası A.Ş. Genel Müdürlük ve Şube ağında görevlendirilmek üzere Teftiş Kurulu Müfettiş Yardımcısı ve Genel Müdürlük birimlerinde Uzman Yardımcısı unvanlarında personel istihdam edilecektir.',
+    is_active: true,
+    created_at: '2026-11-20T09:00:00Z',
+    positions: [
+      {
+        id: 'pos-ziraat-mufettis',
+        announcement_id: 'ann-ziraat-bankasi-1',
+        title: 'Müfettiş Yardımcısı (Teftiş Kurulu)',
+        quota: 30,
+        education_level: 'LISANS',
+        kpss_type: 'KPSS_YOK',
+        min_kpss_score: 0,
+        min_ales_score: null,
+        min_yds_level: 'C',
+        allowed_departments: [
+          'İktisat',
+          'İşletme',
+          'Maliye',
+          'Hukuk',
+          'Kamu Yönetimi',
+          'Endüstri Mühendisliği',
+          'Bilgisayar Mühendisliği',
+          'Bankacılık ve Finans',
+          'Ekonometri'
+        ],
+        is_any_department: false,
+        max_age: 30,
+        gender_requirement: 'HEPSI',
+        cities: ['ANKARA', 'İSTANBUL'],
+        special_conditions: [
+          '30 yaşını doldurmamış olmak',
+          'Yazılı banka giriş sınavı ve mülakat aşamalarında başarılı olmak',
+          'İngilizce YDS en az C düzeyi (70 puan) veya denkliği kabul edilen sınav belgesi'
+        ],
+        exam_type: 'KURUM_SINAVI',
+      },
+      {
+        id: 'pos-ziraat-uzman-yrd',
+        announcement_id: 'ann-ziraat-bankasi-1',
+        title: 'Uzman Yardımcısı (Genel Müdürlük & Şubeler)',
+        quota: 120,
+        education_level: 'LISANS',
+        kpss_type: 'KPSS_YOK',
+        min_kpss_score: 0,
+        min_ales_score: null,
+        min_yds_level: 'YOK',
+        allowed_departments: [],
+        is_any_department: true,
+        max_age: 30,
+        gender_requirement: 'HEPSI',
+        cities: ['TÜRKİYE GENELİ'],
+        special_conditions: [
+          'Üniversitelerin 4 yıllık lisans bölümlerinden mezun olmak',
+          '30 yaşını doldurmamış olmak',
+          'Banka tarafından yapılacak yazılı ve sözlü sınavlarda başarı göstermek'
+        ],
+        exam_type: 'KURUM_SINAVI',
+      }
+    ]
+  },
+
+  // 18. TÜRKİYE VAKIFLAR BANKASI T.A.O. (VakıfBank Kamu Bankası Bilişim ve Finans Kadroları)
+  {
+    id: 'ann-vakifbank-1',
+    source: 'BANKA',
+    institution_type: 'BANKA',
+    source_url: 'https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar',
+    institution: 'VakıfBank (Türkiye Vakıflar Bankası T.A.O.)',
+    title: 'VAKIFBANK - BİLİŞİM & YAZILIM UZMAN YARDIMCISI VE MALİ ANALİST ALIMI',
+    publish_date: '2026-11-22',
+    application_start_date: '2026-11-22T09:00:00Z',
+    deadline: '2026-12-20T23:59:00Z',
+    application_method: 'e-Devlet / Kariyer Kapısı Kamu İşe Alım (https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar) — Son Başvuru: 20 Aralık 2026',
+    raw_summary: 'VakıfBank Bilgi Teknolojileri ve Finansal Operasyonlar bünyesinde istihdam edilmek üzere Yazılım Geliştirme, Sistem Güvenliği, Veri Analitiği ve Mali Analist kadrolarına personel alımı yapılacaktır.',
+    is_active: true,
+    created_at: '2026-11-22T09:00:00Z',
+    positions: [
+      {
+        id: 'pos-vakifbank-bt-uzman',
+        announcement_id: 'ann-vakifbank-1',
+        title: 'Bilişim & Yazılım Uzman Yardımcısı',
+        quota: 45,
+        education_level: 'LISANS',
+        kpss_type: 'KPSS_YOK',
+        min_kpss_score: 0,
+        min_ales_score: null,
+        min_yds_level: 'D',
+        allowed_departments: [
+          'Bilgisayar Mühendisliği',
+          'Yazılım Mühendisliği',
+          'Elektrik-Elektronik Mühendisliği',
+          'Yönetim Bilişim Sistemleri',
+          'Matematik Mühendisliği',
+          'Bilişim Sistemleri Mühendisliği'
+        ],
+        is_any_department: false,
+        max_age: 30,
+        gender_requirement: 'HEPSI',
+        cities: ['İSTANBUL', 'ANKARA'],
+        special_conditions: [
+          'Yazılım geliştirme dilleri veya veri tabanı yönetimi konularında bilgi sahibi olmak',
+          'İngilizce YDS en az D düzeyi veya eşdeğeri'
+        ],
+        exam_type: 'KURUM_SINAVI',
+      },
+      {
+        id: 'pos-vakifbank-mali-analist',
+        announcement_id: 'ann-vakifbank-1',
+        title: 'Mali Analist / Finansal Analiz Uzman Yardımcısı',
+        quota: 35,
+        education_level: 'LISANS',
+        kpss_type: 'KPSS_YOK',
+        min_kpss_score: 0,
+        min_ales_score: null,
+        min_yds_level: 'YOK',
+        allowed_departments: [
+          'İktisat',
+          'İşletme',
+          'Maliye',
+          'Finans ve Bankacılık',
+          'Endüstri Mühendisliği',
+          'Ekonometri'
+        ],
+        is_any_department: false,
+        max_age: 30,
+        gender_requirement: 'HEPSI',
+        cities: ['İSTANBUL'],
+        special_conditions: [
+          'Temel muhasebe ve bilanço analizi bilgisine sahip olmak'
+        ],
+        exam_type: 'KURUM_SINAVI',
+      }
+    ]
+  },
+
+  // 19. TÜRKİYE CUMHURİYET MERKEZ BANKASI (TCMB)
+  {
+    id: 'ann-tcmb-1',
+    source: 'BANKA',
+    institution_type: 'BANKA',
+    source_url: 'https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar',
+    institution: 'Türkiye Cumhuriyet Merkez Bankası (TCMB)',
+    title: 'TÜRKİYE CUMHURİYET MERKEZ BANKASI - ARAŞTIRMACI VE UZMAN YARDIMCISI ALIMI',
+    publish_date: '2026-11-24',
+    application_start_date: '2026-11-24T09:00:00Z',
+    deadline: '2026-12-30T23:59:00Z',
+    application_method: 'e-Devlet / Kariyer Kapısı Kamu İşe Alım (https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar) — Son Başvuru: 30 Aralık 2026',
+    raw_summary: 'Türkiye Cumhuriyet Merkez Bankası Araştırma ve Para Politikası, İstatistik, Bankacılık ve Finansal Kuruluşlar Genel Müdürlüklerinde görev alacak Uzman Yardımcıları ve Araştırmacılar alınacaktır.',
+    is_active: true,
+    created_at: '2026-11-24T09:00:00Z',
+    positions: [
+      {
+        id: 'pos-tcmb-uzman-yrd',
+        announcement_id: 'ann-tcmb-1',
+        title: 'Merkez Bankası Uzman Yardımcısı',
+        quota: 25,
+        education_level: 'LISANS',
+        kpss_type: 'KPSSP3',
+        min_kpss_score: 85.0,
+        min_ales_score: 80.0,
+        ales_type: 'SAYISAL',
+        min_yds_level: 'B',
+        allowed_departments: [
+          'İktisat',
+          'İşletme',
+          'Maliye',
+          'Endüstri Mühendisliği',
+          'Matematik',
+          'İstatistik',
+          'Bilgisayar Mühendisliği'
+        ],
+        is_any_department: false,
+        max_age: 35,
+        gender_requirement: 'HEPSI',
+        cities: ['ANKARA', 'İSTANBUL'],
+        special_conditions: [
+          'KPSSP3 veya ALES Sayısal en az 80 puan',
+          'İngilizce YDS en az B düzeyi (80 puan) veya eşdeğer TOEFL',
+          'Para politikası ve finansal modelleme alanına ilgi duymak'
+        ],
+        exam_type: 'KURUM_SINAVI',
+      }
+    ]
+  },
+
 ];
 
 export const POPULAR_DEPARTMENTS = [

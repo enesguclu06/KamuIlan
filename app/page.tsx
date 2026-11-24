@@ -226,10 +226,11 @@ export default function HomePage() {
       if (selectedWorkTypes.length > 0) {
         const text = `${item.title} ${item.raw_summary || ''} ${(item.positions || []).map(p => p.title).join(' ')}`.toLowerCase();
         const matchesWorkType = selectedWorkTypes.some((wt) => {
+          if (wt === 'BANKA') return item.institution_type === 'BANKA' || item.source === 'BANKA' || text.includes('banka') || text.includes('ziraat') || text.includes('vakifbank');
           if (wt === 'SOZLESMELI') return text.includes('sözleşmeli') || text.includes('4/b') || text.includes('4-b');
           if (wt === 'ISCI') return text.includes('işçi') || text.includes('4/d') || text.includes('şoför') || text.includes('temizlik') || text.includes('güvenlik');
           if (wt === 'AKADEMIK') return text.includes('öğretim') || text.includes('akademik') || text.includes('araştırma görevlisi') || text.includes('doçent') || text.includes('profesör');
-          if (wt === 'MEMUR') return !text.includes('işçi') && !text.includes('öğretim görevlisi');
+          if (wt === 'MEMUR') return !text.includes('işçi') && !text.includes('öğretim görevlisi') && !text.includes('banka');
           return true;
         });
         if (!matchesWorkType) return false;
@@ -321,10 +322,13 @@ export default function HomePage() {
     let sozlesmeli = 0;
     let isci = 0;
     let akademik = 0;
+    let banka = 0;
 
     announcements.forEach((ann) => {
       const text = `${ann.title} ${ann.raw_summary || ''} ${(ann.positions || []).map(p => p.title).join(' ')}`.toLowerCase();
-      if (text.includes('sözleşmeli') || text.includes('4/b') || text.includes('4-b')) {
+      if (ann.institution_type === 'BANKA' || ann.source === 'BANKA' || text.includes('banka') || text.includes('ziraat') || text.includes('vakifbank')) {
+        banka++;
+      } else if (text.includes('sözleşmeli') || text.includes('4/b') || text.includes('4-b')) {
         sozlesmeli++;
       } else if (text.includes('işçi') || text.includes('4/d') || text.includes('şoför') || text.includes('temizlik') || text.includes('güvenlik')) {
         isci++;
@@ -340,6 +344,7 @@ export default function HomePage() {
       'SOZLESMELI': sozlesmeli,
       'ISCI': isci,
       'AKADEMIK': akademik,
+      'BANKA': banka,
     };
   }, [announcements]);
 
@@ -801,6 +806,7 @@ export default function HomePage() {
                   { key: 'SOZLESMELI', label: 'Sözleşmeli Personel (4/B)', count: workTypeCounts.SOZLESMELI },
                   { key: 'ISCI', label: 'Sürekli İşçi (4/D)', count: workTypeCounts.ISCI },
                   { key: 'MEMUR', label: 'Memur (657 4/A)', count: workTypeCounts.MEMUR },
+                  { key: 'BANKA', label: 'Kamu Bankaları & Finans', count: workTypeCounts.BANKA },
                   { key: 'AKADEMIK', label: 'Akademik Personel', count: workTypeCounts.AKADEMIK },
                 ].map((item) => {
                   const isChecked = selectedWorkTypes.includes(item.key);

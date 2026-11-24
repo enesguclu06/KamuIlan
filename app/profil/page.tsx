@@ -21,9 +21,19 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { useUserProfile } from '@/lib/context/user-profile-context';
-import { UserProfile, EducationLevel, KpssType, AlesType, YdsLevel, GraduationStatus, MilitaryStatus } from '@/types';
+import { 
+  UserProfile, 
+  EducationLevel, 
+  KpssType, 
+  AlesType, 
+  YdsLevel, 
+  GraduationStatus, 
+  MilitaryStatus,
+  LanguageExamType,
+  SpecialStatus
+} from '@/types';
 import { POPULAR_DEPARTMENTS, SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
-import { computeAnnouncementMatch, calculateAge } from '@/lib/matcher';
+import { computeAnnouncementMatch, calculateAge, scoreToYdsLevel } from '@/lib/matcher';
 
 const CERTIFICATE_OPTIONS = [
   'B Sınıfı Ehliyet',
@@ -33,12 +43,48 @@ const CERTIFICATE_OPTIONS = [
   'Silahlı Özel Güvenlik Kartı',
   'MEB Onaylı Bilgisayar İşletmenliği Sertifikası',
   'Zabıt Katipliği / Hızlı Klavye Sertifikası',
-  'Aşçılık Ustalık / Kalfalık Belgesi',
-  'SRC 2 / SRC 4 Belgesi',
+  'Aşçılık Ustalık Belgesi',
+  'Aşçılık Kalfalık Belgesi',
+  'Fırıncılık / Pastacılık Ustalık Belgesi',
+  'Elektrik / Tesisat Ustalık Belgesi',
+  'SRC 1 / SRC 2 Belgesi (Yolcu Taşımacılığı)',
+  'SRC 3 / SRC 4 Belgesi (Yük & Eşya)',
+  'Psikoteknik Değerlendirme Raporu',
   'İlk Yardım Sertifikası',
   'Hijyen Eğitimi Belgesi',
   'İş Sağlığı ve Güvenliği (İSG) Belgesi'
 ];
+
+const SPECIAL_STATUS_OPTIONS: { id: SpecialStatus; label: string; sub?: string }[] = [
+  { id: 'ESKI_HUKUMLU', label: 'Eski hükümlü' },
+  { id: 'TMY', label: 'Terörle mücadelede malul', sub: 'TMY' },
+  { id: 'ENGELLI', label: 'Engelli' },
+  { id: 'SEHIT_GAZI_YAKINI', label: 'Şehit yakını / gazi' },
+  { id: 'ISKUR_ONCELIK', label: 'İŞKUR öncelik hakkım var', sub: 'afetzede, terörle mücadele yaralısı ...' }
+];
+
+const LANGUAGE_EXAM_TYPES: { id: LanguageExamType; label: string }[] = [
+  { id: 'YDS', label: 'YDS (Yabancı Dil Bilgisi Seviye Tespit Sınavı)' },
+  { id: 'YOKDIL', label: 'YÖKDİL (Yükseköğretim Kurumları Yabancı Dil Sınavı)' },
+  { id: 'E_YDS', label: 'e-YDS (Elektronik YDS)' },
+  { id: 'TOEFL', label: 'TOEFL / Diğer ÖSYM Eşdeğeri' },
+  { id: 'YOK', label: 'Sınava Girmedim / Dil Puanım Yok' }
+];
+
+const LANGUAGES = [
+  'İngilizce',
+  'Almanca',
+  'Fransızca',
+  'Arapça',
+  'Rusça',
+  'Farsça',
+  'İspanyolca',
+  'İtalyanca',
+  'Çince',
+  'Diğer'
+];
+
+const EXAM_YEARS = [2026, 2025, 2024, 2023, 2022, 2021, 2020];
 
 const CITIES = [
   'ADANA', 'ADIYAMAN', 'AFYONKARAHİSAR', 'AĞRI', 'AMASYA', 'ANKARA', 'ANTALYA', 'ARTVİN',
@@ -75,6 +121,14 @@ export default function ProfilePage() {
     ales_score: undefined,
     yds_level: 'YOK',
     yds_score: undefined,
+    language_exam_type: 'YDS',
+    foreign_language: 'İngilizce',
+    language_exam_year: 2024,
+    special_statuses: [],
+    has_computer_course: false,
+    experience_field: '',
+    experience_years: undefined,
+    has_sgk_service: false,
     certificates: [],
     preferred_cities: [],
     residence_city: '',
@@ -89,7 +143,18 @@ export default function ProfilePage() {
   // Mevcut profili forma yükle
   useEffect(() => {
     if (profile) {
-      setFormData(profile);
+      setFormData(prev => ({
+        ...prev,
+        ...profile,
+        language_exam_type: profile.language_exam_type || 'YDS',
+        foreign_language: profile.foreign_language || 'İngilizce',
+        language_exam_year: profile.language_exam_year || 2024,
+        special_statuses: profile.special_statuses || [],
+        has_computer_course: profile.has_computer_course || false,
+        experience_field: profile.experience_field || '',
+        experience_years: profile.experience_years ?? undefined,
+        has_sgk_service: profile.has_sgk_service || false,
+      }));
       setDepartmentSearch(profile.department || '');
     }
   }, [profile]);
@@ -113,6 +178,38 @@ export default function ProfilePage() {
     } else {
       setFormData({ ...formData, certificates: [...current, cert] });
     }
+  };
+
+  const handleSpecialStatusToggle = (status: SpecialStatus) => {
+    const current = formData.special_statuses || [];
+    if (current.includes(status)) {
+      setFormData({ ...formData, special_statuses: current.filter(s => s !== status) });
+    } else {
+      setFormData({ ...formData, special_statuses: [...current, status] });
+    }
+  };
+
+  // Puan girildiğinde otomatik YDS seviyesi atama
+  const handleLanguageScoreChange = (scoreVal: string) => {
+    if (!scoreVal || scoreVal.trim() === '') {
+      setFormData({
+        ...formData,
+        yds_score: undefined,
+        yds_level: 'YOK'
+      });
+      return;
+    }
+    const num = parseFloat(scoreVal);
+    if (isNaN(num)) {
+      setFormData({ ...formData, yds_score: undefined });
+      return;
+    }
+    const autoLevel = scoreToYdsLevel(num);
+    setFormData({
+      ...formData,
+      yds_score: num,
+      yds_level: autoLevel
+    });
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -360,56 +457,166 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Yabancı Dil (YDS / YÖKDİL) */}
-            <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200 space-y-3">
-              <h3 className="text-xs font-extrabold text-[#1b4332] uppercase tracking-wider flex items-center gap-1.5">
-                <span>🌍 Yabancı Dil Bilgisi (YDS / YÖKDİL)</span>
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Yabancı Dil (YDS / YÖKDİL / e-YDS) */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/40 border border-emerald-200/90 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-emerald-100 pb-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    YDS Düzeyi
+                  <h3 className="text-xs font-extrabold text-[#1b4332] uppercase tracking-wider flex items-center gap-1.5">
+                    <span>🌍 Yabancı Dil Bilgisi & Sınav Puanı</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    YDS, YÖKDİL veya e-YDS puanınızı girdiğinizde sistem ÖSYM denklik seviyesini (A, B, C, D, E) otomatik atar.
+                  </p>
+                </div>
+                {formData.yds_level && formData.yds_level !== 'YOK' && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#1b4332] text-white text-xs font-bold font-mono shadow-sm">
+                    ✓ Seviye: {formData.yds_level} Düzeyi ({formData.yds_score ? `${formData.yds_score} Puan` : 'Aktif'})
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Sınav Türü */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Sınav Türü
                   </label>
                   <select
-                    value={formData.yds_level || 'YOK'}
-                    onChange={(e) => setFormData({ ...formData, yds_level: e.target.value as YdsLevel })}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none bg-white font-medium"
+                    value={formData.language_exam_type || 'YDS'}
+                    onChange={(e) => setFormData({ ...formData, language_exam_type: e.target.value as LanguageExamType })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none bg-white font-medium"
                   >
-                    <option value="YOK">YDS Yok / Belirtilmedi</option>
-                    <option value="A">A Düzeyi (90 - 100 Puan)</option>
-                    <option value="B">B Düzeyi (80 - 89 Puan)</option>
-                    <option value="C">C Düzeyi (70 - 79 Puan)</option>
-                    <option value="D">D Düzeyi (60 - 69 Puan)</option>
-                    <option value="E">E Düzeyi (50 - 59 Puan)</option>
+                    {LANGUAGE_EXAM_TYPES.map((t) => (
+                      <option key={t.id} value={t.id}>{t.label}</option>
+                    ))}
                   </select>
                 </div>
 
+                {/* Yabancı Dil */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Yabancı Dil Puanınız (Varsa Sayısal)
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Hangi Dil?
+                  </label>
+                  <select
+                    value={formData.foreign_language || 'İngilizce'}
+                    onChange={(e) => setFormData({ ...formData, foreign_language: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none bg-white font-medium"
+                  >
+                    {LANGUAGES.map((lang) => (
+                      <option key={lang} value={lang}>{lang}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Sınav Yılı */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Sınav Yılı <span className="text-[10px] text-slate-400 font-normal">(5 Yıl Geçerlilik)</span>
+                  </label>
+                  <select
+                    value={formData.language_exam_year || 2024}
+                    onChange={(e) => setFormData({ ...formData, language_exam_year: parseInt(e.target.value, 10) })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none bg-white font-medium"
+                  >
+                    {EXAM_YEARS.map((yr) => (
+                      <option key={yr} value={yr}>{yr}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Sayısal Puan ve Otomatik Seviye */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>Sınav Puanı (0 - 100)</span>
+                    <span className="text-[10px] font-semibold text-emerald-700">Otomatik Seviye</span>
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     max="100"
-                    placeholder="Örn: 70.00"
+                    placeholder="Örn: 75.00"
                     value={formData.yds_score ?? ''}
-                    onChange={(e) => setFormData({ ...formData, yds_score: e.target.value ? parseFloat(e.target.value) : undefined })}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none font-mono"
+                    onChange={(e) => handleLanguageScoreChange(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none font-mono font-bold text-slate-800"
                   />
                 </div>
+              </div>
+
+              {/* Seviye Detay Çubuğu */}
+              <div className="pt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+                <span className="font-semibold text-slate-700">ÖSYM Seviye Eşleşmesi:</span>
+                <span className={`px-2 py-0.5 rounded-md border ${formData.yds_level === 'A' ? 'bg-[#1b4332] text-white border-[#1b4332] font-bold' : 'bg-white text-slate-600 border-slate-200'}`}>A (90-100)</span>
+                <span className={`px-2 py-0.5 rounded-md border ${formData.yds_level === 'B' ? 'bg-[#1b4332] text-white border-[#1b4332] font-bold' : 'bg-white text-slate-600 border-slate-200'}`}>B (80-89)</span>
+                <span className={`px-2 py-0.5 rounded-md border ${formData.yds_level === 'C' ? 'bg-[#1b4332] text-white border-[#1b4332] font-bold' : 'bg-white text-slate-600 border-slate-200'}`}>C (70-79)</span>
+                <span className={`px-2 py-0.5 rounded-md border ${formData.yds_level === 'D' ? 'bg-[#1b4332] text-white border-[#1b4332] font-bold' : 'bg-white text-slate-600 border-slate-200'}`}>D (60-69)</span>
+                <span className={`px-2 py-0.5 rounded-md border ${formData.yds_level === 'E' ? 'bg-[#1b4332] text-white border-[#1b4332] font-bold' : 'bg-white text-slate-600 border-slate-200'}`}>E (50-59)</span>
+                <span className={`px-2 py-0.5 rounded-md border ${formData.yds_level === 'YOK' ? 'bg-slate-200 text-slate-700 border-slate-300 font-bold' : 'bg-white text-slate-400 border-slate-200'}`}>Puan Yok (&lt;50)</span>
               </div>
             </div>
           </div>
 
-          {/* 3. KİŞİSEL BİLGİLER VE YAŞ (YAŞ SINIRI ŞARTLARI İÇİN) */}
+          {/* 3. ÖZEL STATÜ BÖLÜMÜ (Kullanıcının İstediği Birebir Tasarım) */}
+          <div className="bg-white p-6 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-4">
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-1.5">
+                <span>Özel statü</span>
+                <span className="text-sm font-normal text-slate-400">· varsa</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Özel statü kontenjanı bulunan kamu ve İŞKUR ilanlarını anında tespit edebilmemiz için varsa durumunuzu işaretleyin:
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+              {SPECIAL_STATUS_OPTIONS.map((item) => {
+                const isSelected = (formData.special_statuses || []).includes(item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleSpecialStatusToggle(item.id)}
+                    className={`flex items-start gap-3.5 p-4 rounded-2xl border text-left transition-all ${
+                      isSelected
+                        ? 'border-[#1b4332] bg-emerald-50/60 shadow-sm ring-1 ring-[#1b4332]'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <div className="mt-0.5">
+                      <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                        isSelected 
+                          ? 'bg-[#1b4332] border-[#1b4332] text-white' 
+                          : 'border-slate-300 bg-white'
+                      }`}>
+                        {isSelected && (
+                          <svg className="w-3.5 h-3.5 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">
+                        {item.label}
+                      </div>
+                      {item.sub && (
+                        <div className="text-xs text-slate-400 font-normal mt-0.5">
+                          {item.sub}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4. KİŞİSEL BİLGİLER VE YAŞ (YAŞ SINIRI ŞARTLARI İÇİN) */}
           <div className="bg-white p-6 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-4">
             <div className="border-b border-slate-100 pb-3">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <UserCheck className="w-5 h-5 text-[#1b4332]" />
-                <span>3. Kişisel Bilgiler ve Yaş Durumu</span>
+                <span>4. Kişisel Bilgiler ve Yaş Durumu</span>
               </h2>
               <p className="text-xs text-slate-500 mt-1">
                 Kamu alımlarında 30 veya 35 yaş sınırı şartı bulunduğu için doğum tarihiniz önemlidir.
@@ -563,37 +770,145 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* 4. SERTİFİKALAR VE EHLİYETLER */}
+          {/* 5. EK BELGELER & BİLGİSAYAR DERSİ TRANSKRİPT ONAYI */}
           <div className="bg-white p-6 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-4">
             <div className="border-b border-slate-100 pb-3">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-[#1b4332]" />
-                <span>4. Sahip Olduğunuz Belgeler & Ehliyetler</span>
+                <span>5. Ek Belgeler & Sertifikalarınız</span>
               </h2>
               <p className="text-xs text-slate-500 mt-1">
-                İlanlardaki "B Sınıfı Ehliyet", "Özel Güvenlik Kartı" gibi ek şartlarla tam eşleşmek için sahip olduklarınızı işaretleyin:
+                İlanlardaki özel sertifika, ehliyet veya ustalık şartlarıyla tam eşleşmek için sahip olduklarınızı işaretleyin:
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2 pt-1">
-              {CERTIFICATE_OPTIONS.map((cert) => {
-                const isChecked = (formData.certificates || []).includes(cert);
-                return (
-                  <button
-                    type="button"
-                    key={cert}
-                    onClick={() => handleCertificateToggle(cert)}
-                    className={`text-xs px-3.5 py-2 rounded-xl border transition-all ${
-                      isChecked
-                        ? 'bg-[#1b4332] text-white border-[#1b4332] font-bold shadow-sm scale-105'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                    }`}
-                  >
-                    {isChecked ? '✓ ' : '+ '}
-                    {cert}
-                  </button>
-                );
-              })}
+            {/* Bilgisayar Dersi Özel Vurgu Kartı */}
+            <div 
+              onClick={() => setFormData({ ...formData, has_computer_course: !formData.has_computer_course })}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3.5 ${
+                formData.has_computer_course
+                  ? 'border-[#1b4332] bg-emerald-50/70 shadow-sm ring-1 ring-[#1b4332]'
+                  : 'border-amber-200 bg-amber-50/40 hover:border-amber-300'
+              }`}
+            >
+              <div className="mt-0.5">
+                <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                  formData.has_computer_course 
+                    ? 'bg-[#1b4332] border-[#1b4332] text-white' 
+                    : 'border-amber-400 bg-white'
+                }`}>
+                  {formData.has_computer_course && (
+                    <svg className="w-3.5 h-3.5 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                  <span>💻 Okulda zorunlu veya seçmeli bilgisayar dersi aldım (Transkript Onaylı)</span>
+                  <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">Kamuda Geçerli</span>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Lise veya üniversite öğreniminiz süresince bilgisayar dersi aldıysanız ve transkriptinizde görünüyorsa, kamu alımlarında talep edilen <strong>"MEB Onaylı Bilgisayar İşletmenliği Sertifikası"</strong> şartını resmi olarak sağlamış sayılırsınız.
+                </p>
+              </div>
+            </div>
+
+            {/* Mesleki Belgeler ve Ehliyetler */}
+            <div className="pt-2">
+              <label className="block text-xs font-bold text-slate-700 mb-2">
+                Sahip Olduğunuz Diğer Belgeler, Ustalık ve Ehliyetler:
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {CERTIFICATE_OPTIONS.map((cert) => {
+                  const isChecked = (formData.certificates || []).includes(cert);
+                  return (
+                    <button
+                      type="button"
+                      key={cert}
+                      onClick={() => handleCertificateToggle(cert)}
+                      className={`text-xs px-3.5 py-2 rounded-xl border transition-all ${
+                        isChecked
+                          ? 'bg-[#1b4332] text-white border-[#1b4332] font-bold shadow-sm scale-105'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {isChecked ? '✓ ' : '+ '}
+                      {cert}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* 6. TECRÜBE VE MESLEKİ DENEYİM BÖLÜMÜ */}
+          <div className="bg-white p-6 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-4">
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-[#1b4332]" />
+                <span>6. Mesleki Tecrübe ve Çalışma Deneyimi</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Bazı kamu ve banka ilanlarında 1 yıl, 2 yıl veya 3 yıl mesleki deneyim şartı aranmaktadır. Varsa deneyiminizi girin:
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Meslek / Deneyim Alanınız
+                </label>
+                <input
+                  type="text"
+                  placeholder="Örn: Büro Memuru, Aşçı, Yazılım Geliştirici, Şoför, Güvenlik..."
+                  value={formData.experience_field || ''}
+                  onChange={(e) => setFormData({ ...formData, experience_field: e.target.value })}
+                  className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Tecrübe Süreniz (Yıl)
+                </label>
+                <select
+                  value={formData.experience_years ?? 0}
+                  onChange={(e) => setFormData({ ...formData, experience_years: parseInt(e.target.value, 10) })}
+                  className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none bg-white font-medium"
+                >
+                  <option value={0}>Tecrübem Yok (Yeni Mezun / Deneyimsiz)</option>
+                  <option value={1}>1 Yıl Deneyim</option>
+                  <option value={2}>2 Yıl Deneyim</option>
+                  <option value={3}>3 Yıl Deneyim</option>
+                  <option value={4}>4 Yıl Deneyim</option>
+                  <option value={5}>5 Yıl ve Üzeri Deneyim</option>
+                </select>
+              </div>
+            </div>
+
+            {/* SGK Hizmet Dökümü Onay Kutusu */}
+            <div 
+              onClick={() => setFormData({ ...formData, has_sgk_service: !formData.has_sgk_service })}
+              className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
+                formData.has_sgk_service
+                  ? 'border-[#1b4332] bg-emerald-50/70 text-slate-900 ring-1 ring-[#1b4332]'
+                  : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100 text-slate-700'
+              }`}
+            >
+              <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                formData.has_sgk_service ? 'bg-[#1b4332] border-[#1b4332] text-white' : 'border-slate-300 bg-white'
+              }`}>
+                {formData.has_sgk_service && (
+                  <svg className="w-3 h-3 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                )}
+              </div>
+              <span className="text-xs font-semibold">
+                Çalışma sürem SGK Hizmet Dökümü veya ilgili kurumdan alınacak resmi belgeyle kanıtlanabilir.
+              </span>
             </div>
           </div>
 
@@ -609,6 +924,13 @@ export default function ProfilePage() {
                     graduation_status: 'MEZUN',
                     kpss_type: 'KPSSP3',
                     certificates: [],
+                    special_statuses: [],
+                    has_computer_course: false,
+                    experience_field: '',
+                    experience_years: 0,
+                    has_sgk_service: false,
+                    yds_level: 'YOK',
+                    yds_score: undefined,
                   });
                   setDepartmentSearch('');
                 }
