@@ -6,6 +6,7 @@ import {
   pickSchemaProfileFields,
   findSupabaseUserByEmail,
   sanitizeEmail,
+  mergeProfilesSafe,
 } from '@/lib/server/user-store';
 
 export async function GET(req: NextRequest) {
@@ -36,15 +37,12 @@ export async function GET(req: NextRequest) {
           if (data) dbRow = data;
         } catch {}
 
-        const mergedProfile = {
-          ...(dbRow || {}),
-          ...(localRecord?.profile || {}),
-          ...(meta.profile || {}),
+        const mergedProfile = mergeProfilesSafe(dbRow, localRecord?.profile, meta.profile, {
           email,
           user_id: supaUser.id,
           full_name: meta.full_name || meta.profile?.full_name || dbRow?.full_name || localRecord?.fullName,
           is_registered: true,
-        };
+        });
 
         const favorites = Array.isArray(meta.favorites)
           ? meta.favorites
@@ -105,7 +103,9 @@ export async function POST(req: NextRequest) {
       existing.fullName ||
       (computedIsRegistered ? normEmail.split('@')[0] : 'Misafir Aday');
 
-    const mergedProfile = profile || existing.profile;
+    const mergedProfile = profile
+      ? mergeProfilesSafe(existing.profile, profile)
+      : existing.profile;
     const mergedFavorites = favorites || existing.favorites || [];
 
     // Mevcut passwordHash kesinlikle korunur!

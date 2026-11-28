@@ -10,6 +10,7 @@ import {
   findSupabaseUserByEmail,
   sanitizeEmail,
   isValidEmail,
+  mergeProfilesSafe,
 } from '@/lib/server/user-store';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -265,15 +266,12 @@ export async function POST(req: NextRequest) {
         const resolvedFullName =
           meta.full_name || dbProfile?.full_name || existingLocal?.fullName || normEmail.split('@')[0];
 
-        const resolvedProfile = {
-          ...(dbProfile || {}),
-          ...(meta.profile || {}),
-          ...(existingLocal?.profile || {}),
+        const resolvedProfile = mergeProfilesSafe(dbProfile, existingLocal?.profile, meta.profile, {
           email: normEmail,
           full_name: resolvedFullName,
           user_id: supaUser.id,
           is_registered: true,
-        };
+        });
         const resolvedFavorites = Array.isArray(meta.favorites)
           ? meta.favorites
           : existingLocal?.favorites || [];

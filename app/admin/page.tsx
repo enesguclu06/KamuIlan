@@ -62,6 +62,7 @@ export default function AdminPage() {
   const [userTypeFilter, setUserTypeFilter] = useState<'ALL' | 'REGISTERED' | 'GUEST'>('ALL');
   const [selectedUserDetail, setSelectedUserDetail] = useState<RegisteredUserItem | null>(null);
   const [userActionMsg, setUserActionMsg] = useState<string>('');
+  const [supabaseConfigured, setSupabaseConfigured] = useState<boolean | null>(null);
 
   // İlanlar Listesi
   const [announcementsList] = useState<Announcement[]>(SAMPLE_ANNOUNCEMENTS);
@@ -154,19 +155,37 @@ export default function AdminPage() {
       const res = await fetch('/api/admin/users');
       if (res.ok) {
         const data = await res.json();
+        if (typeof data.supabaseConfigured === 'boolean') {
+          setSupabaseConfigured(data.supabaseConfigured);
+        }
         if (data.users && Array.isArray(data.users)) {
+          const mergeNonEmpty = (a: any, b: any) => {
+            const out: Record<string, any> = {};
+            for (const src of [a, b]) {
+              if (!src || typeof src !== 'object') continue;
+              for (const [k, v] of Object.entries(src)) {
+                if (v === undefined || v === null || v === '') continue;
+                if (Array.isArray(v) && v.length === 0 && Array.isArray(out[k]) && out[k].length > 0) continue;
+                out[k] = v;
+              }
+            }
+            return out;
+          };
+
           data.users.forEach((srvUser: any) => {
             const em = (srvUser.email || '').toLowerCase().trim();
             if (em) {
               const isRegistered = Boolean(srvUser.isRegistered ?? (!em.includes('@yerel.kamuilan') && !em.startsWith('misafir_')));
+              const existingLocal = usersMap[em];
+              const mergedProfile = mergeNonEmpty(existingLocal?.profile, srvUser.profile);
               usersMap[em] = {
                 email: em,
-                fullName: srvUser.fullName || usersMap[em]?.fullName || srvUser.profile?.full_name || (isRegistered ? em.split('@')[0] : 'Misafir Aday'),
-                profile: srvUser.profile || usersMap[em]?.profile || null,
-                favorites: srvUser.favorites || usersMap[em]?.favorites || [],
+                fullName: srvUser.fullName || existingLocal?.fullName || srvUser.profile?.full_name || (isRegistered ? em.split('@')[0] : 'Misafir Aday'),
+                profile: Object.keys(mergedProfile).length > 0 ? mergedProfile : null,
+                favorites: (srvUser.favorites && srvUser.favorites.length > 0) ? srvUser.favorites : (existingLocal?.favorites || []),
                 isRegistered,
-                registeredAt: srvUser.registeredAt || usersMap[em]?.registeredAt || srvUser.updatedAt,
-                updatedAt: srvUser.updatedAt || usersMap[em]?.updatedAt,
+                registeredAt: srvUser.registeredAt || existingLocal?.registeredAt || srvUser.updatedAt,
+                updatedAt: srvUser.updatedAt || existingLocal?.updatedAt,
                 source: srvUser.source || 'SERVER_DB',
               };
             }
@@ -498,9 +517,27 @@ export default function AdminPage() {
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold border border-rose-500/30">
-                <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
-                <span>YÖNETİCİ KONTROL PANELİ</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold border border-rose-500/30">
+                  <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
+                  <span>YÖNETİCİ KONTROL PANELİ</span>
+                </div>
+                {supabaseConfigured !== null && (
+                  <div
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                      supabaseConfigured
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                        : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    }`}
+                  >
+                    <Database className="w-3 h-3" />
+                    <span>
+                      {supabaseConfigured
+                        ? 'Supabase DB: Bağlı (Kalıcı)'
+                        : 'Supabase DB: Bağlı Değil (Geçici Mod — Vercel Env Eksik)'}
+                    </span>
+                  </div>
+                )}
               </div>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
                 Hoş Geldin, Enes Güçlü

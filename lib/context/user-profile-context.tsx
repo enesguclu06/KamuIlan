@@ -291,21 +291,77 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       }
     } catch {}
 
+    // Yerel depodan eski/kayıtlı profil varsa kurtar (sunucu geçici modda sıfırlanmış olabilir)
+    let localAccountProfile: Partial<UserProfile> = {};
+    let localAccountFavorites: string[] = [];
+    let localStorageProfile: Partial<UserProfile> = {};
+    try {
+      const dbRaw = localStorage.getItem(ACCOUNTS_DB_KEY);
+      if (dbRaw) {
+        const db = JSON.parse(dbRaw);
+        if (db[normEmail]?.profile) {
+          localAccountProfile = db[normEmail].profile;
+        }
+        if (Array.isArray(db[normEmail]?.favorites)) {
+          localAccountFavorites = db[normEmail].favorites;
+        }
+      }
+      const stRaw = localStorage.getItem(STORAGE_KEY);
+      if (stRaw) {
+        const parsedSt = JSON.parse(stRaw);
+        if (parsedSt && (!parsedSt.email || parsedSt.email.toLowerCase().trim() === normEmail)) {
+          localStorageProfile = parsedSt;
+        }
+      }
+    } catch {}
+
+    const mergeSafe = (...srcs: Array<Partial<UserProfile> | null | undefined>): UserProfile => {
+      const acc: Record<string, any> = {};
+      for (const s of srcs) {
+        if (!s) continue;
+        for (const [k, v] of Object.entries(s)) {
+          if (v === undefined || v === null || v === '') continue;
+          if (Array.isArray(v) && v.length === 0 && Array.isArray(acc[k]) && acc[k].length > 0) continue;
+          acc[k] = v;
+        }
+      }
+      return acc as UserProfile;
+    };
+
     const finalProfile: UserProfile = {
       education_level: 'LISANS',
       graduation_status: 'MEZUN',
       kpss_type: 'KPSSP3',
       gender: 'BELIRTILMEMIS',
       military_status: 'YOK',
-      ...(serverProfile || {}),
+      ...mergeSafe(localStorageProfile, localAccountProfile, serverProfile),
       email: normEmail,
       full_name: resolvedName,
       is_registered: true,
     };
 
-    const cleanedFavs = sanitizeFavorites(serverFavorites || []);
+    const cleanedFavs = sanitizeFavorites(
+      serverFavorites && serverFavorites.length > 0 ? serverFavorites : localAccountFavorites
+    );
     setProfile(finalProfile);
     setFavorites(cleanedFavs);
+
+    // Eğer sunucudan gelen profilde bölüm/puan yoktu ama yerelden kurtarıldıysa sunucuya geri senkronize et
+    const serverWasEmpty = !(serverProfile?.department || serverProfile?.kpss_score);
+    const recoveredHasData = Boolean(finalProfile.department || finalProfile.kpss_score);
+    if (serverWasEmpty && recoveredHasData) {
+      fetch('/api/user/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: normEmail,
+          profile: finalProfile,
+          favorites: cleanedFavs,
+          fullName: resolvedName,
+          isRegistered: true,
+        }),
+      }).catch(() => {});
+    }
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(finalProfile));

@@ -151,3 +151,21 @@ export function sanitizeEmail(email: string): string {
 export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+
+/**
+ * Birden fazla profil kaynağını birleştirirken null/boş değerlerin dolu alanları ezmesini engeller
+ */
+export function mergeProfilesSafe(...sources: Array<Record<string, any> | null | undefined>): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const src of sources) {
+    if (!src || typeof src !== 'object') continue;
+    for (const [key, val] of Object.entries(src)) {
+      if (val === undefined || val === null || val === '') continue;
+      if (Array.isArray(val) && val.length === 0 && Array.isArray(result[key]) && result[key].length > 0) {
+        continue;
+      }
+      result[key] = val;
+    }
+  }
+  return result;
+}

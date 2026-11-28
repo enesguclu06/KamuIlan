@@ -5,6 +5,7 @@ import {
   saveLocalProfiles,
   findSupabaseUserByEmail,
   sanitizeEmail,
+  mergeProfilesSafe,
 } from '@/lib/server/user-store';
 
 export async function GET(req: NextRequest) {
@@ -72,16 +73,14 @@ export async function GET(req: NextRequest) {
                 metaProfile.full_name ||
                 existing.fullName ||
                 email.split('@')[0],
-              profile: {
-                ...(existing.profile || {}),
-                ...metaProfile,
+              profile: mergeProfilesSafe(existing.profile, metaProfile, {
                 email,
                 full_name:
                   meta.full_name ||
                   metaProfile.full_name ||
                   existing.fullName ||
                   email.split('@')[0],
-              },
+              }),
               favorites: Array.isArray(meta.favorites)
                 ? meta.favorites
                 : existing.favorites || [],
@@ -133,11 +132,9 @@ export async function GET(req: NextRequest) {
                 row.full_name ||
                 existing.fullName ||
                 (isRegistered ? email.split('@')[0] : 'Misafir Aday'),
-              profile: {
-                ...row,
-                ...(existing.profile || {}),
+              profile: mergeProfilesSafe(row, existing.profile, {
                 full_name: row.full_name || existing.fullName,
-              },
+              }),
               favorites: existing.favorites || [],
               isRegistered,
               registeredAt: row.created_at || existing.registeredAt || row.updated_at,
@@ -159,6 +156,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      supabaseConfigured: isAdminConfigured,
       totalCount: usersList.length,
       users: usersList,
     });
