@@ -51,11 +51,11 @@ export function Navbar() {
   const NOTIFICATIONS = [
     {
       id: 'notif-1',
-      title: 'Sayıştay Başkanlığı Son Başvuru!',
-      desc: 'Sözleşmeli Çözümleyici ve Programcı alımı için son başvuru tarihi: 25 Kasım 2026 (1 gün kaldı).',
-      tag: 'Son Başvuru',
+      title: 'Rekabet Kurumu 55 Uzman Yardımcısı!',
+      desc: 'Genel, İktisat, Hukuk ve Bilişim kadroları için başvurular 7 - 21 Aralık 2026 tarihleri arasında Kariyer Kapısı üzerinden yapılacaktır.',
+      tag: 'Yeni İlan',
       time: 'Bugün',
-      href: '/ilan/ann-sayistay-1',
+      href: '/ilan/ann-rekabet-1',
       color: 'amber',
       unread: true,
     },

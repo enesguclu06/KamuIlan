@@ -79,30 +79,22 @@ export function extractCoreKeywords(deptName: string): string[] {
     .filter(w => w.length >= 3 && !GENERIC_DEPT_WORDS.has(w));
 }
 
-export function checkDepartmentMatch(
+export function findMatchedDepartment(
   userDepartment?: string,
-  allowedDepartments: string[] = [],
-  isAnyDepartment?: boolean | null
-): boolean {
-  // isAnyDepartment null/undefined gelirse false kabul et
-  if (isAnyDepartment === true) return true;
-  if (!allowedDepartments || allowedDepartments.length === 0) return true;
-  if (!userDepartment) return false;
+  allowedDepartments: string[] = []
+): string | null {
+  if (!userDepartment || !allowedDepartments || allowedDepartments.length === 0) return null;
 
   const userCore = extractCoreKeywords(userDepartment);
-  if (userCore.length === 0) return false;
+  if (userCore.length === 0) return null;
 
   for (const dept of allowedDepartments) {
     const allowedCore = extractCoreKeywords(dept);
     if (allowedCore.length === 0) continue;
 
-    // Kullanıcının bölüm ana disipliniyle ilan bölümleri tam çakışıyor mu?
-    // Kısmen örtüşme YETERLİ DEĞİL — her iki taraf da aynı ana kelimeyi paylaşmalı
     const hasCoreMatch = userCore.some(uk =>
       allowedCore.some(ak => {
-        // Tam eşitlik (örn: "bilgisayar" === "bilgisayar")
         if (ak === uk) return true;
-        // Biri diğerinin prefix'i ve yeterince uzun (örn: "bilgisay" → "bilgisayar")
         if (uk.length >= 5 && ak.startsWith(uk)) return true;
         if (ak.length >= 5 && uk.startsWith(ak)) return true;
         return false;
@@ -110,11 +102,21 @@ export function checkDepartmentMatch(
     );
 
     if (hasCoreMatch) {
-      return true;
+      return dept;
     }
   }
 
-  return false;
+  return null;
+}
+
+export function checkDepartmentMatch(
+  userDepartment?: string,
+  allowedDepartments: string[] = [],
+  isAnyDepartment?: boolean | null
+): boolean {
+  if (isAnyDepartment === true) return true;
+  if (!allowedDepartments || allowedDepartments.length === 0) return true;
+  return findMatchedDepartment(userDepartment, allowedDepartments) !== null;
 }
 
 export function evaluateMatch(
@@ -165,6 +167,7 @@ export function evaluateMatch(
   let eduMatch = false;
   let deptMatch = false;
   let matchedEducationLabel = '';
+  let matchedAllowedDeptName: string | null = null;
 
   // Kullanıcının tüm diplomalarını tara; en az biri hem düzeyi hem de bölümü sağlıyorsa tam uyum sağla
   for (const edu of allUserEducations) {
@@ -181,16 +184,15 @@ export function evaluateMatch(
       }
     }
 
-    const currentDeptMatch = checkDepartmentMatch(
-      edu.dept,
-      position.allowed_departments ?? [],
-      position.is_any_department ?? false
-    );
+    const foundDept = position.is_any_department
+      ? (edu.dept || 'Tüm Bölümler')
+      : findMatchedDepartment(edu.dept, position.allowed_departments ?? []);
 
-    if (currentEduLevelMatch && currentDeptMatch) {
+    if (currentEduLevelMatch && foundDept !== null) {
       eduMatch = true;
       deptMatch = true;
       matchedEducationLabel = `${edu.label} (${edu.dept} - ${edu.level})`;
+      if (!position.is_any_department) matchedAllowedDeptName = foundDept;
       break;
     }
   }
@@ -442,7 +444,20 @@ export function evaluateMatch(
       department: {
         match: deptMatch,
         user: matchedEducationLabel ? matchedEducationLabel : (allUserEducations.map(e => e.dept).filter(Boolean).join(', ') || 'Belirtilmedi'),
-        required: position.is_any_department ? 'Herhangi Bir Program' : position.allowed_departments.slice(0, 3).join(', ') || 'Belirtilmedi',
+        required: (() => {
+          if (position.is_any_department) return 'Herhangi Bir Program';
+          const list = position.allowed_departments || [];
+          if (list.length === 0) return 'Belirtilmedi';
+          if (matchedAllowedDeptName) {
+            const ordered = [matchedAllowedDeptName, ...list.filter(d => d !== matchedAllowedDeptName)];
+            return ordered.length > 3
+              ? `${ordered.slice(0, 3).join(', ')} (+${ordered.length - 3} bölüm)`
+              : ordered.join(', ');
+          }
+          return list.length > 3
+            ? `${list.slice(0, 3).join(', ')} (+${list.length - 3} bölüm)`
+            : list.join(', ');
+        })(),
       },
       kpss: {
         match: kpssMatch,

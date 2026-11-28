@@ -57,7 +57,11 @@ const ALL_TURKEY_CITIES = [
 export default function HomePage() {
   const router = useRouter();
   const { profile, hasProfileFilled, isLoggedIn, favorites, toggleFavorite } = useUserProfile();
-  const [announcements, setAnnouncements] = useState<Announcement[]>(SAMPLE_ANNOUNCEMENTS);
+  const activeSampleAnnouncements = useMemo(
+    () => SAMPLE_ANNOUNCEMENTS.filter(a => new Date(a.deadline).getTime() >= Date.now()),
+    []
+  );
+  const [announcements, setAnnouncements] = useState<Announcement[]>(activeSampleAnnouncements);
   const [loading, setLoading] = useState(false);
 
   // Filtreler
@@ -119,7 +123,7 @@ export default function HomePage() {
             new Date(a.deadline).getTime() >= (nowMs - 24 * 60 * 60 * 1000)
           );
 
-          setAnnouncements([...SAMPLE_ANNOUNCEMENTS, ...extraFromDb]);
+          setAnnouncements([...activeSampleAnnouncements, ...extraFromDb]);
         }
       } catch (e) {
         console.warn('Canlı ilan verisi çekilirken hata oluştu, doğrulanmış ilanlar gösteriliyor:', e);
@@ -969,11 +973,65 @@ export default function HomePage() {
 
             {/* İLAN KARTLARI (MEMURYOLU BİREBİR KART YAPISI) */}
             {filteredList.length === 0 ? (
-              <div className="text-center py-20 bg-white rounded-2xl border border-[#e5dfd5] p-8 space-y-3">
-                <FileText className="w-12 h-12 text-slate-300 mx-auto" />
-                <h3 className="text-base font-bold text-slate-800">Seçilen Filtrelere Uygun İlan Bulunamadı</h3>
-                <p className="text-xs text-slate-500">Soldaki filtreleri temizleyerek veya arama kelimesini değiştirerek tekrar deneyebilirsiniz.</p>
-              </div>
+              selectedWorkTypes.includes('BANKA') ? (
+                <div className="bg-white rounded-2xl border border-[#e5dfd5] p-6 sm:p-8 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <Building2 className="w-8 h-8 text-[#1b4332] flex-shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <h3 className="text-base font-bold text-slate-900">
+                        Şu An Açık Kamu Bankası Alım İlanı Bulunmuyor
+                      </h3>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        Kamu bankalarının (Ziraat Bankası, VakıfBank, Halkbank ve TCMB) güncel döneme ait başvurusu devam eden yeni bir ilanı bulunmamaktadır. Bankaların kendi resmi kariyer portallarını doğrudan aşağıdan kontrol edebilirsiniz:
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                    <a
+                      href="https://www.ziraatbank.com.tr/tr/bankamiz/insan-kaynaklari/acik-pozisyonlar"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-[#1b4332] hover:bg-emerald-50/40 text-xs font-bold text-slate-800 transition-all"
+                    >
+                      <span>T.C. Ziraat Bankası Açık Pozisyonlar</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-[#1b4332]" />
+                    </a>
+                    <a
+                      href="https://www.vakifbank.com.tr/tr/kurumsal/insan-kaynaklari/ise-alim"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-[#1b4332] hover:bg-emerald-50/40 text-xs font-bold text-slate-800 transition-all"
+                    >
+                      <span>VakıfBank İnsan Kaynakları</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-[#1b4332]" />
+                    </a>
+                    <a
+                      href="https://www.halkbank.com.tr/tr/bankamiz/insan-kaynaklari.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-[#1b4332] hover:bg-emerald-50/40 text-xs font-bold text-slate-800 transition-all"
+                    >
+                      <span>Halkbank İnsan Kaynakları</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-[#1b4332]" />
+                    </a>
+                    <a
+                      href="https://insankaynaklari.tcmb.gov.tr"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-[#1b4332] hover:bg-emerald-50/40 text-xs font-bold text-slate-800 transition-all"
+                    >
+                      <span>T.C. Merkez Bankası (TCMB) İK</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-[#1b4332]" />
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-20 bg-white rounded-2xl border border-[#e5dfd5] p-8 space-y-3">
+                  <FileText className="w-12 h-12 text-slate-300 mx-auto" />
+                  <h3 className="text-base font-bold text-slate-800">Seçilen Filtrelere Uygun İlan Bulunamadı</h3>
+                  <p className="text-xs text-slate-500">Soldaki filtreleri temizleyerek veya arama kelimesini değiştirerek tekrar deneyebilirsiniz.</p>
+                </div>
+              )
             ) : (
               <div className="space-y-4">
                 {filteredList.map((announcement) => {

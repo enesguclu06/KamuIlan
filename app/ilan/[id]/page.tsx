@@ -250,51 +250,66 @@ export default function AnnouncementDetailPage() {
         </div>
 
         {/* Başvuru Aksiyon Butonları */}
-        <div className="pt-2 flex flex-wrap items-center gap-3">
-          <a
-            href={
-              announcement.application_method.includes('http')
-                ? announcement.application_method
-                    .match(/https?:\/\/[^\s)]+/)?.[0]
-                    ?.replace('isealimkariyerkapisi.cbiko.gov.tr', 'kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar')
-                    ?.replace('www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim', 'kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar')
-                    || 'https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar'
-                : 'https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar'
-            }
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-sm font-bold shadow-md shadow-emerald-900/20 transition-all"
-          >
-            <span>Resmi Başvuru Ekranına Git (Kariyer Kapısı)</span>
-            <ExternalLink className="w-4 h-4" />
-          </a>
+        {(() => {
+          const rawMethodUrl = announcement.application_method.includes('http')
+            ? announcement.application_method
+                .match(/https?:\/\/[^\s)]+/)?.[0]
+                ?.replace('isealimkariyerkapisi.cbiko.gov.tr', 'kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar')
+                ?.replace('www.turkiye.gov.tr/kariyer-kapisi-kamu-ise-alim', 'kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar')
+            : null;
+          const applyUrl = rawMethodUrl || 'https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar';
+          const applyLabel = applyUrl.includes('ais.osym.gov.tr')
+            ? 'Resmi Başvuru Ekranına Git (ÖSYM AİS)'
+            : applyUrl.includes('jandarma')
+              ? 'Resmi Başvuru Ekranına Git (Jandarma PTS)'
+              : applyUrl.includes('tga.gov.tr')
+                ? 'Resmi Başvuru Ekranına Git (TGA Kariyer)'
+                : 'Resmi Başvuru Ekranına Git (Kariyer Kapısı)';
 
-          {announcement.source_url && (
-            <a
-              href={
-                announcement.source_url.includes('isealimkariyerkapisi.cbiko.gov.tr') || announcement.source_url.includes('turkiye.gov.tr/kariyer-kapisi')
-                  ? 'https://kariyerkapisi.gov.tr/Ilanlar/UyeIlanlar'
-                  : announcement.source_url
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold border border-slate-300 transition-colors"
-            >
-              <span>Resmî Kurum Duyurusu / PDF Dökümü</span>
-              <FileCheck2 className="w-4 h-4 text-slate-500" />
-            </a>
-          )}
+          const cleanSourceUrl =
+            announcement.source_url &&
+            !announcement.source_url.includes('kariyerkapisi.gov.tr') &&
+            !announcement.source_url.includes('turkiye.gov.tr/kariyer-kapisi') &&
+            announcement.source_url !== applyUrl
+              ? announcement.source_url
+              : null;
 
-          <button
-            type="button"
-            onClick={() => openWhatsappShare(announcement)}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-sm font-bold shadow-md shadow-emerald-950/15 transition-all hover:scale-105"
-            title="İlanı WhatsApp üzerinden arkadaşlarına veya gruplara ilet"
-          >
-            <WhatsAppIcon className="w-4 h-4" />
-            <span>WhatsApp ile Arkadaşına Gönder</span>
-          </button>
-        </div>
+          return (
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <a
+                href={applyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-sm font-bold shadow-md shadow-emerald-900/20 transition-all"
+              >
+                <span>{applyLabel}</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+
+              {cleanSourceUrl && (
+                <a
+                  href={cleanSourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold border border-slate-300 transition-colors"
+                >
+                  <span>Resmî Kurum Web Sitesi / Duyuru</span>
+                  <FileCheck2 className="w-4 h-4 text-slate-500" />
+                </a>
+              )}
+
+              <button
+                type="button"
+                onClick={() => openWhatsappShare(announcement)}
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-sm font-bold shadow-md shadow-emerald-950/15 transition-all hover:scale-105"
+                title="İlanı WhatsApp üzerinden arkadaşlarına veya gruplara ilet"
+              >
+                <WhatsAppIcon className="w-4 h-4" />
+                <span>WhatsApp ile Arkadaşına Gönder</span>
+              </button>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Profil Eşleştirme Bilgilendirme Notu */}
@@ -423,10 +438,17 @@ export default function AnnouncementDetailPage() {
                           <XCircle className="w-4 h-4 text-rose-600" />
                         )}
                       </div>
-                      <p className="text-xs text-slate-800 truncate" title={criteriaMatrix.department.required}>
+                      <p
+                        className="text-xs text-slate-800 line-clamp-2 leading-snug"
+                        title={
+                          position.is_any_department
+                            ? 'Tüm Bölümler'
+                            : position.allowed_departments.join(', ')
+                        }
+                      >
                         <strong>İstenen:</strong> {criteriaMatrix.department.required}
                       </p>
-                      <p className="text-xs text-slate-500 truncate" title={criteriaMatrix.department.user}>
+                      <p className="text-xs text-slate-500 truncate mt-0.5" title={criteriaMatrix.department.user}>
                         <strong>Senin:</strong> {criteriaMatrix.department.user}
                       </p>
                     </div>
