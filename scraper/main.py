@@ -17,7 +17,8 @@ try:
     from scraper.resmi_gazete import (
         fetch_resmi_gazete_daily_links,
         extract_content_from_url,
-        get_existing_urls_from_supabase
+        get_existing_urls_from_supabase,
+        is_target_announcement,
     )
     from scraper.ai_parser import parse_announcement_with_gemini
     from scraper.notifier import notify_users_for_announcement
@@ -26,7 +27,8 @@ except ImportError:
     from resmi_gazete import (
         fetch_resmi_gazete_daily_links,
         extract_content_from_url,
-        get_existing_urls_from_supabase
+        get_existing_urls_from_supabase,
+        is_target_announcement,
     )
     from ai_parser import parse_announcement_with_gemini
     from notifier import notify_users_for_announcement
@@ -129,10 +131,13 @@ def run_scraper(limit: int = 10, dry_run: bool = False, custom_url: Optional[str
     processed_count = 0
     notified_total = 0
 
-    for item in new_items[:limit]:
+    for item in new_items:
+        if processed_count >= limit:
+            break
+
         title = item["title"]
         url = item["url"]
-        print(f"\n[{processed_count + 1}/{min(len(new_items), limit)}] İşleniyor: {title}")
+        print(f"\n[KONTROL] {title}")
         print(f"    Link: {url}")
 
         raw_content = extract_content_from_url(url)
@@ -140,6 +145,12 @@ def run_scraper(limit: int = 10, dry_run: bool = False, custom_url: Optional[str
             print("    [ATLANDI] Yetersiz veya boş içerik.")
             continue
 
+        # PDF metni personel/memur alımıyla ilgili mi kontrol et (Gemini kotasını koru!)
+        if not is_target_announcement(f"{title}\n{raw_content[:3000]}"):
+            print("    [ATLANDI] Personel alımı ilanı değil (ihale/yönetmelik/düzeltme vb.).")
+            continue
+
+        print(f"    [HEDEF TESPİT EDİLDİ] AI Ayrıştırma başlatılıyor ({processed_count + 1}/{limit})...")
         parsed = parse_announcement_with_gemini(raw_content, fallback_title=title)
         if not parsed:
             print("    [ATLANDI] İlan ayrıştırılamadı.")
