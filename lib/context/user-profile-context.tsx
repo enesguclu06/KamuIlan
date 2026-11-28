@@ -287,7 +287,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
           }
         }
         localStorage.removeItem('kamu_ilan_anon_id');
-        fetch(`/api/admin/users?email=${encodeURIComponent(anonId)}`, { method: 'DELETE' }).catch(() => {});
+        fetch(`/api/user/profile?email=${encodeURIComponent(anonId)}`, { method: 'DELETE' }).catch(() => {});
       }
     } catch {}
 

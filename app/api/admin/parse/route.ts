@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isAdminAuthorized } from '@/lib/server/admin-auth';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL_NAME || 'gemini-2.5-flash';
 
 export async function POST(req: NextRequest) {
+  if (!isAdminAuthorized(req)) {
+    return NextResponse.json({ error: 'Yetkisiz erişim. Yönetici girişi gereklidir.' }, { status: 401 });
+  }
   try {
     const body = await req.json();
     const { rawText, sourceUrl } = body;

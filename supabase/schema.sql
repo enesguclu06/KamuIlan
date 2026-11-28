@@ -295,3 +295,41 @@ INSERT INTO public.departments (name, education_level, aliases) VALUES
 ('Tesisat Teknolojisi ve İklimlendirme (Lise)', 'LISE', ARRAY['Sıhhi Tesisat', 'Doğalgaz']),
 ('Güvenlik Hizmetleri (Lise)', 'LISE', ARRAY['Özel Güvenlik'])
 ON CONFLICT (name) DO NOTHING;
+
+-- ==============================================================================
+-- GÜVENLİ MİGRASYON (MEVCUT SUPABASE VERİTABANI GÜNCELLEMESİ)
+-- ==============================================================================
+ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS official_pdf_url TEXT;
+ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS application_start_date TIMESTAMPTZ;
+ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS institution_type TEXT;
+
+ALTER TABLE public.announcements DROP CONSTRAINT IF EXISTS announcements_source_check;
+ALTER TABLE public.announcements ADD CONSTRAINT announcements_source_check
+    CHECK (source IN ('RESMI_GAZETE', 'KARIYER_KAPISI', 'BANKA', 'MANUEL'));
+
+ALTER TABLE public.positions DROP CONSTRAINT IF EXISTS positions_education_level_check;
+ALTER TABLE public.positions ADD CONSTRAINT positions_education_level_check
+    CHECK (education_level IN ('LISE', 'ONLISANS', 'LISANS', 'YUKSEK_LISANS'));
+
+ALTER TABLE public.positions DROP CONSTRAINT IF EXISTS positions_kpss_type_check;
+ALTER TABLE public.positions DROP CONSTRAINT IF EXISTS positions_exam_type_check;
+ALTER TABLE public.positions ADD CONSTRAINT positions_exam_type_check
+    CHECK (exam_type IN ('MULAKAT', 'KPSS_PUAN_USTUNLUGU', 'UYGULAMALI', 'KURUM_SINAVI'));
+
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS is_registered BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS height INT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS weight INT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS additional_educations JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS special_statuses TEXT[] DEFAULT '{}';
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS has_computer_course BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS experience_field TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS experience_years INT DEFAULT 0;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS has_sgk_service BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS language_exam_type TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS foreign_language TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS language_exam_year INT;
+ALTER TABLE public.user_profiles DROP CONSTRAINT IF EXISTS user_profiles_education_level_check;
+ALTER TABLE public.user_profiles ADD CONSTRAINT user_profiles_education_level_check
+    CHECK (education_level IN ('LISE', 'ONLISANS', 'LISANS', 'YUKSEK_LISANS'));
+

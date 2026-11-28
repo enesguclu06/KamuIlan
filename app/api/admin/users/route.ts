@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isAdminConfigured } from '@/lib/supabase/admin';
+import { isAdminAuthorized } from '@/lib/server/admin-auth';
 import {
   loadLocalProfiles,
   saveLocalProfiles,
@@ -9,6 +10,9 @@ import {
 } from '@/lib/server/user-store';
 
 export async function GET(req: NextRequest) {
+  if (!isAdminAuthorized(req)) {
+    return NextResponse.json({ error: 'Yetkisiz erişim. Yönetici girişi gereklidir.' }, { status: 401 });
+  }
   try {
     const usersMap: Record<string, any> = {};
 
@@ -169,6 +173,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  if (!isAdminAuthorized(req)) {
+    return NextResponse.json({ error: 'Yetkisiz erişim. Yönetici girişi gereklidir.' }, { status: 401 });
+  }
   try {
     const { searchParams } = new URL(req.url);
     const rawEmail = searchParams.get('email');

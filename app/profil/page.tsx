@@ -20,7 +20,9 @@ import {
   ArrowRight,
   RotateCcw,
   Plus,
-  Trash2
+  Trash2,
+  Bell,
+  Send
 } from 'lucide-react';
 import { useUserProfile } from '@/lib/context/user-profile-context';
 import { 
@@ -143,6 +145,37 @@ export default function ProfilePage() {
   const [departmentSearch, setDepartmentSearch] = useState('');
   const [departmentSuggestions, setDepartmentSuggestions] = useState<string[]>([]);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [telegramTestLoading, setTelegramTestLoading] = useState(false);
+  const [telegramTestResult, setTelegramTestResult] = useState<{ text: string; success: boolean } | null>(null);
+
+  const handleTestTelegram = async () => {
+    if (!formData.telegram_chat_id?.trim()) {
+      setTelegramTestResult({ text: 'Lütfen önce Telegram Chat ID girin.', success: false });
+      return;
+    }
+    setTelegramTestLoading(true);
+    setTelegramTestResult(null);
+    try {
+      const res = await fetch('/api/test-telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: formData.telegram_chat_id.trim(),
+          userName: formData.full_name || 'Aday',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTelegramTestResult({ text: data.message, success: true });
+      } else {
+        setTelegramTestResult({ text: data.error || 'Test mesajı gönderilemedi.', success: false });
+      }
+    } catch {
+      setTelegramTestResult({ text: 'Telegram servisine bağlanılamadı.', success: false });
+    } finally {
+      setTelegramTestLoading(false);
+    }
+  };
 
   // Mevcut profili forma yükle
   useEffect(() => {
@@ -1032,6 +1065,86 @@ export default function ProfilePage() {
               </div>
               <span className="text-xs font-semibold">
                 Çalışma sürem SGK Hizmet Dökümü veya ilgili kurumdan alınacak resmi belgeyle kanıtlanabilir.
+              </span>
+            </div>
+          </div>
+
+          {/* 7. ANLIK TELEGRAM İLAN BİLDİRİMİ (OPSİYONEL) */}
+          <div className="bg-white p-6 rounded-2xl border border-[#e5dfd5] shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-[#1b4332]" />
+                  <span>7. Anlık Telegram İlan Bildirimi</span>
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Profilinize tam uyan yeni bir Resmî Gazete veya kamu ilanı yayımlandığında Telegram üzerinden anında uyarı alın.
+                </p>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+                Opsiyonel
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Telegram Chat ID <span className="text-[10px] text-slate-400 font-normal">(Telegram&apos;da @userinfobot veya botumuza /start yazarak öğrenebilirsiniz)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Örn: 123456789"
+                  value={formData.telegram_chat_id || ''}
+                  onChange={(e) => setFormData({ ...formData, telegram_chat_id: e.target.value })}
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 focus:ring-1 focus:ring-[#1b4332] focus:outline-none font-mono"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleTestTelegram}
+                disabled={telegramTestLoading}
+                className="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>{telegramTestLoading ? 'Gönderiliyor...' : 'Test Mesajı Gönder'}</span>
+              </button>
+            </div>
+
+            {telegramTestResult && (
+              <div
+                className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+                  telegramTestResult.success
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-rose-50 text-rose-800 border border-rose-200'
+                }`}
+              >
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{telegramTestResult.text}</span>
+              </div>
+            )}
+
+            <div
+              onClick={() => setFormData({ ...formData, notify_enabled: !formData.notify_enabled })}
+              className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
+                formData.notify_enabled
+                  ? 'border-[#1b4332] bg-emerald-50/70 text-slate-900 ring-1 ring-[#1b4332]'
+                  : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100 text-slate-700'
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded border flex items-center justify-center ${
+                  formData.notify_enabled ? 'bg-[#1b4332] border-[#1b4332] text-white' : 'border-slate-300 bg-white'
+                }`}
+              >
+                {formData.notify_enabled && (
+                  <svg className="w-3 h-3 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                )}
+              </div>
+              <span className="text-xs font-semibold">
+                Kriterlerime uygun yeni bir kamu ilanı çıktığında Telegram bildirimleri almak istiyorum.
               </span>
             </div>
           </div>

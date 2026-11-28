@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { isAdminAuthorized } from '@/lib/server/admin-auth';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 export async function POST(req: NextRequest) {
+  if (!isAdminAuthorized(req)) {
+    return NextResponse.json({ error: 'Yetkisiz erişim. Yönetici girişi gereklidir.' }, { status: 401 });
+  }
   try {
     const body = await req.json();
     const { announcement, positions, sourceUrl } = body;

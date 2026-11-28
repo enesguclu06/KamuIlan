@@ -326,6 +326,25 @@ export default function AnnouncementDetailPage() {
                 <WhatsAppIcon className="w-4 h-4" />
                 <span>WhatsApp ile Arkadaşına Gönder</span>
               </button>
+
+              {daysLeft > 0 && (() => {
+                const d = new Date(announcement.deadline);
+                const pad = (n: number) => String(n).padStart(2, '0');
+                const ymd = `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}`;
+                const calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`SON GÜN: ${announcement.institution} - ${announcement.title}`)}&dates=${ymd}T060000Z/${ymd}T140000Z&details=${encodeURIComponent(`Başvuru Linki: ${applyUrl}\nDetaylar: https://kamuilan-one.vercel.app/ilan/${announcement.id}`)}`;
+                return (
+                  <a
+                    href={calUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 text-sm font-semibold border border-amber-200 transition-colors"
+                    title="Son başvuru gününü Google Takvim'e hatırlatıcı olarak ekle"
+                  >
+                    <Calendar className="w-4 h-4 text-amber-700" />
+                    <span>Takvime Ekle</span>
+                  </a>
+                );
+              })()}
             </div>
           );
         })()}

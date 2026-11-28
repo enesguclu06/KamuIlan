@@ -33,8 +33,7 @@ import {
 } from 'lucide-react';
 import { Announcement, Position, UserProfile } from '@/types';
 import { SAMPLE_ANNOUNCEMENTS } from '@/lib/sample-data';
-
-const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || 'Enes20041818/';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 
 interface RegisteredUserItem {
   email: string;
@@ -65,7 +64,7 @@ export default function AdminPage() {
   const [supabaseConfigured, setSupabaseConfigured] = useState<boolean | null>(null);
 
   // İlanlar Listesi
-  const [announcementsList] = useState<Announcement[]>(SAMPLE_ANNOUNCEMENTS);
+  const [announcementsList, setAnnouncementsList] = useState<Announcement[]>(SAMPLE_ANNOUNCEMENTS);
   const [annSearchQuery, setAnnSearchQuery] = useState<string>('');
   const [selectedInstitutionFilter, setSelectedInstitutionFilter] = useState<string>('ALL');
 
@@ -88,37 +87,64 @@ export default function AdminPage() {
     positions: any[];
   } | null>(null);
 
-  // Oturum kontrolü
+  // Sunucu cookie oturum kontrolü + canlı ilan yükleme
   useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem('kamu_ilan_admin_authenticated');
-      if (stored === 'true') {
-        setIsAuthenticated(true);
-      }
-    } catch {}
+    fetch('/api/admin/auth')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.authenticated) {
+          setIsAuthenticated(true);
+        }
+      })
+      .catch(() => {});
+
+    if (isSupabaseConfigured && supabase) {
+      (supabase as any)
+        .from('announcements')
+        .select('*, positions (*)')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .then(({ data }: any) => {
+          if (data && data.length > 0) {
+            const sampleTitles = new Set(SAMPLE_ANNOUNCEMENTS.map((s) => s.title));
+            const extra = data.filter((a: any) => !sampleTitles.has(a.title) && a.positions?.length > 0);
+            if (extra.length > 0) {
+              setAnnouncementsList([...SAMPLE_ANNOUNCEMENTS, ...extra]);
+            }
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
-  // Giriş Yap
-  const handleAdminLogin = (e: React.FormEvent) => {
+  // Giriş Yap (Sunucu üzerinden güvenli doğrulama)
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanInput = pinInput.trim();
-    if (cleanInput === 'Enes20041818/' || cleanInput === ADMIN_PIN || cleanInput === 'kamuilan2026') {
-      setIsAuthenticated(true);
-      setPinError('');
-      try {
-        sessionStorage.setItem('kamu_ilan_admin_authenticated', 'true');
-      } catch {}
-    } else {
-      setPinError('Hatalı yönetici şifresi! Erişim engellendi.');
+    setPinError('');
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: pinInput.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data?.authenticated) {
+        setIsAuthenticated(true);
+        setPinError('');
+      } else {
+        setPinError(data?.error || 'Hatalı yönetici şifresi! Erişim engellendi.');
+      }
+    } catch {
+      setPinError('Sunucuya bağlanılamadı, lütfen tekrar deneyin.');
     }
   };
 
-  const handleAdminLogout = () => {
+  const handleAdminLogout = async () => {
+    try {
+      await fetch('/api/admin/auth', { method: 'DELETE' });
+    } catch {}
     setIsAuthenticated(false);
     setPinInput('');
-    try {
-      sessionStorage.removeItem('kamu_ilan_admin_authenticated');
-    } catch {}
   };
 
   // Kullanıcıları Yükle (Sunucu + Yerel Depo)
@@ -543,7 +569,7 @@ export default function AdminPage() {
                 Hoş Geldin, Enes Güçlü
               </h1>
               <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-                Kayıtlı adayların girdiği tüm profil verilerini, KPSS puanlarını ve bölümlerini buradan inceleyebilir; 27 aktif resmî kamu ilanını yönetebilir ve yeni ilanları yayına alabilirsin.
+                Kayıtlı adayların girdiği tüm profil verilerini, KPSS puanlarını ve bölümlerini buradan inceleyebilir; {announcementsList.length} aktif resmî kamu ilanını yönetebilir ve yeni ilanları yayına alabilirsin.
               </p>
             </div>
 
@@ -572,7 +598,9 @@ export default function AdminPage() {
             <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
               <div className="text-slate-400 text-xs font-medium">Aktif Resmî İlan</div>
               <div className="text-2xl font-black text-white mt-1">{totalAnnouncementsCount} İlan</div>
-              <div className="text-[11px] text-emerald-400 font-semibold mt-0.5">24 Kariyer Kapısı + 3 Resmî Gazete</div>
+              <div className="text-[11px] text-emerald-400 font-semibold mt-0.5">
+                {announcementsList.filter(a => a.source === 'KARIYER_KAPISI').length} Kariyer Kapısı + {announcementsList.filter(a => a.source === 'RESMI_GAZETE').length} Resmî Gazete
+              </div>
             </div>
 
             <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
@@ -1384,7 +1412,7 @@ export default function AdminPage() {
                   <span>Veritabanı Senkronizasyonu</span>
                 </h3>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Tüm 27 doğrulanmış kamu ilanını (Kariyer Kapısı + Resmî Gazete) mükerrer kontrolü yaparak veritabanına aktarır.
+                  Doğrulanmış {announcementsList.length} kamu ilanını ve bugünkü canlı Resmî Gazete PDF duyurularını mükerrer kontrolü yaparak veritabanına aktarır.
                 </p>
                 <button
                   onClick={handleScrapeNow}
@@ -1402,7 +1430,7 @@ export default function AdminPage() {
                   <span>GitHub Actions Otomasyonu</span>
                 </h3>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Her gün 08:30 ve 18:30'da çalışan otomatik Resmî Gazete scraper workflow'unu GitHub panelinden canlı tetikleyebilir veya durumunu izleyebilirsiniz.
+                  Her gün sabah 08:30&apos;da çalışan otomatik Resmî Gazete scraper workflow&apos;unu GitHub panelinden canlı tetikleyebilir veya durumunu izleyebilirsiniz.
                 </p>
                 <a
                   href="https://github.com/enesguclu06/KamuIlan/actions"
