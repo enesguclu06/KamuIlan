@@ -40,6 +40,7 @@ export interface Announcement {
   id: string;
   source: 'RESMI_GAZETE' | 'KARIYER_KAPISI' | 'BANKA' | 'MANUEL';
   source_url: string;
+  official_pdf_url?: string;
   institution: string;
   institution_type?: InstitutionType;
   title: string;

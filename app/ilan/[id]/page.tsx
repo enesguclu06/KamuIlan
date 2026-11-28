@@ -266,11 +266,18 @@ export default function AnnouncementDetailPage() {
                 ? 'Resmi Başvuru Ekranına Git (TGA Kariyer)'
                 : 'Resmi Başvuru Ekranına Git (Kariyer Kapısı)';
 
-          const cleanSourceUrl =
+          const pdfUrl =
+            announcement.official_pdf_url ||
+            (announcement.source_url && announcement.source_url.toLowerCase().endsWith('.pdf')
+              ? announcement.source_url
+              : null);
+
+          const cleanSourcePageUrl =
             announcement.source_url &&
             !announcement.source_url.includes('kariyerkapisi.gov.tr') &&
             !announcement.source_url.includes('turkiye.gov.tr/kariyer-kapisi') &&
-            announcement.source_url !== applyUrl
+            announcement.source_url !== applyUrl &&
+            announcement.source_url !== pdfUrl
               ? announcement.source_url
               : null;
 
@@ -286,15 +293,27 @@ export default function AnnouncementDetailPage() {
                 <ExternalLink className="w-4 h-4" />
               </a>
 
-              {cleanSourceUrl && (
+              {cleanSourcePageUrl && (
                 <a
-                  href={cleanSourceUrl}
+                  href={cleanSourcePageUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold border border-slate-300 transition-colors"
                 >
-                  <span>Resmî Kurum Web Sitesi / Duyuru</span>
-                  <FileCheck2 className="w-4 h-4 text-slate-500" />
+                  <span>Resmî Kurum İlan Sayfası</span>
+                  <ExternalLink className="w-4 h-4 text-slate-500" />
+                </a>
+              )}
+
+              {pdfUrl && (
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 text-sm font-semibold border border-rose-200 transition-colors"
+                >
+                  <span>Resmî Gazete PDF İlanı</span>
+                  <FileCheck2 className="w-4 h-4 text-rose-600" />
                 </a>
               )}
 
