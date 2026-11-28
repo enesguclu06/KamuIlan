@@ -20,7 +20,13 @@ interface UserProfileContextType {
   isLoading: boolean;
   isLoggedIn: boolean;
   userEmail: string | null;
-  loginLocal: (email: string, fullName?: string, defaultCriteria?: Partial<UserProfile>) => Promise<void>;
+  completeAuthSession: (
+    email: string,
+    fullName?: string,
+    serverProfile?: UserProfile | null,
+    serverFavorites?: string[],
+    clientAuthHash?: string
+  ) => Promise<void>;
   logout: () => Promise<void>;
   favorites: string[];
   toggleFavorite: (id: string) => void;
@@ -55,14 +61,18 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
             currentLoggedInEmail = session.user.email?.toLowerCase().trim() || null;
             setUserEmail(currentLoggedInEmail);
 
-            const { data, error } = await (supabase as any)
-              .from('user_profiles')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .single();
+            const metaProfile = session.user.user_metadata?.profile;
+            const metaFavorites = session.user.user_metadata?.favorites;
 
-            if (data && !error && (data.department || data.kpss_score || data.education_level)) {
-              setProfile(data as UserProfile);
+            if (metaProfile && (metaProfile.department || metaProfile.kpss_score || metaProfile.education_level || metaProfile.full_name)) {
+              setProfile(metaProfile as UserProfile);
+              if (Array.isArray(metaFavorites)) {
+                const cleaned = sanitizeFavorites(metaFavorites);
+                setFavorites(cleaned);
+                try {
+                  localStorage.setItem(FAVS_KEY, JSON.stringify(cleaned));
+                } catch {}
+              }
               setIsLoading(false);
               return;
             }
@@ -205,10 +215,12 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       try {
         const dbRaw = localStorage.getItem(ACCOUNTS_DB_KEY) || '{}';
         const db = JSON.parse(dbRaw);
+        const existingLocalRecord = db[normEmail] || {};
         db[normEmail] = {
+          ...existingLocalRecord,
           profile: newProfile,
           favorites,
-          fullName: newProfile.full_name || (isAccountRegistered ? normEmail.split('@')[0] : 'Misafir Aday'),
+          fullName: newProfile.full_name || existingLocalRecord.fullName || (isAccountRegistered ? normEmail.split('@')[0] : 'Misafir Aday'),
           isRegistered: isAccountRegistered,
           updatedAt: new Date().toISOString(),
         };
@@ -217,9 +229,9 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         console.warn('Hesap veritabanı yazma hatası:', e);
       }
 
-      // 3. Sunucuya gönder (Telefondan veya başka tarayıcıdan girildiğinde asla kaybolmasın)
+      // 3. Sunucuya kalıcı olarak kaydet (Supabase auth.users + user_profiles + sunucu deposu)
       try {
-        fetch('/api/user/profile', {
+        await fetch('/api/user/profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -229,96 +241,40 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
             fullName: newProfile.full_name,
             isRegistered: isAccountRegistered,
           }),
-        }).catch((err) => console.warn('Sunucuya profil yazma isteği hatası:', err));
-      } catch {}
-    }
-
-    // 4. Supabase yapılandırılmışsa buluta gönder
-    if (isSupabaseConfigured && supabase && isLoggedIn) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await (supabase as any).from('user_profiles').upsert({
-            ...newProfile,
-            user_id: user.id,
-            updated_at: new Date().toISOString(),
-          });
-        }
-      } catch (e) {
-        console.error('Supabase profil güncelleme hatası:', e);
+        });
+      } catch (err) {
+        console.warn('Sunucuya profil yazma isteği hatası:', err);
       }
     }
   };
 
-  const loginLocal = async (email: string, fullName?: string, defaultCriteria?: Partial<UserProfile>) => {
+  const completeAuthSession = async (
+    email: string,
+    fullName?: string,
+    serverProfile?: UserProfile | null,
+    serverFavorites?: string[],
+    clientAuthHash?: string
+  ) => {
     const normEmail = email.toLowerCase().trim();
+    const resolvedName = fullName?.trim() || serverProfile?.full_name || normEmail.split('@')[0];
+
     setIsLoggedIn(true);
     setUserEmail(normEmail);
 
     try {
-      localStorage.setItem(AUTH_KEY, JSON.stringify({
-        email: normEmail,
-        fullName: fullName || normEmail.split('@')[0],
-        loggedInAt: new Date().toISOString()
-      }));
+      localStorage.setItem(
+        AUTH_KEY,
+        JSON.stringify({
+          email: normEmail,
+          fullName: resolvedName,
+          loggedInAt: new Date().toISOString(),
+        })
+      );
     } catch (e) {
       console.warn('Yerel oturum kaydetme hatası:', e);
     }
 
-    // 1. Önce Sunucudan bu e-posta için daha önce kaydedilmiş profil var mı kontrol et
-    let existingProfile: UserProfile | null = null;
-    try {
-      const res = await fetch(`/api/user/profile?email=${encodeURIComponent(normEmail)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.found && data?.profile) {
-          existingProfile = data.profile;
-          if (data.favorites && Array.isArray(data.favorites)) {
-            const cleaned = sanitizeFavorites(data.favorites);
-            setFavorites(cleaned);
-            try {
-              localStorage.setItem(FAVS_KEY, JSON.stringify(cleaned));
-            } catch {}
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Sunucudan profil sorgulama hatası:', e);
-    }
-
-    // 2. Sunucuda henüz yoksa yerel hesap veritabanından kontrol et
-    if (!existingProfile) {
-      try {
-        const dbRaw = localStorage.getItem(ACCOUNTS_DB_KEY);
-        if (dbRaw) {
-          const db = JSON.parse(dbRaw);
-          if (db[normEmail]?.profile) {
-            existingProfile = db[normEmail].profile;
-          }
-        }
-      } catch {}
-    }
-
-    // 2.5. Eğer bu hesap için önceden kayıt yoksa ancak kullanıcı daha önce misafir olarak kriter/CV doldurmuşsa,
-    // o kriterleri kaybetmeden bu yeni açılan hesaba aktar!
-    if (!existingProfile) {
-      try {
-        const localCurrent = localStorage.getItem(STORAGE_KEY);
-        if (localCurrent) {
-          const parsed = JSON.parse(localCurrent);
-          if (parsed && (parsed.department || parsed.kpss_score || parsed.education_level)) {
-            existingProfile = {
-              ...parsed,
-              full_name: fullName || parsed.full_name || normEmail.split('@')[0],
-              email: normEmail,
-              is_registered: true,
-            };
-          }
-        }
-      } catch {}
-    }
-
-    // Eski misafir anahtarını yerel hesap DB'sinden temizle (çift kayıt ve misafir kopyası kalmasın!)
+    // Eski misafir anahtarını temizle (çift kayıt ve misafir kopyası kalmasın!)
     try {
       const anonId = localStorage.getItem('kamu_ilan_anon_id');
       if (anonId) {
@@ -335,35 +291,42 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       }
     } catch {}
 
-    // 3. Kullanıcının önceden kaydettiği veya aktarılan bilgiler varsa KESİNLİKLE EZME, OLDUĞU GİBİ GERİ YÜKLE!
-    if (existingProfile && (existingProfile.department || existingProfile.kpss_score || existingProfile.education_level)) {
-      setProfile(existingProfile);
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(existingProfile));
-      } catch {}
-      await updateProfile(existingProfile);
-      return;
-    }
-
-    // 4. Eğer bu hesap tamamen yeni ise ve hiçbir kayıt bulunamadıysa temiz profil oluştur
-    const candidateName = fullName?.trim() || normEmail.split('@')[0];
-    const newProfile: UserProfile = {
-      full_name: candidateName,
+    const finalProfile: UserProfile = {
+      education_level: 'LISANS',
+      graduation_status: 'MEZUN',
+      kpss_type: 'KPSSP3',
+      gender: 'BELIRTILMEMIS',
+      military_status: 'YOK',
+      ...(serverProfile || {}),
       email: normEmail,
+      full_name: resolvedName,
       is_registered: true,
-      education_level: defaultCriteria?.education_level || 'LISANS',
-      department: defaultCriteria?.department || '',
-      graduation_status: defaultCriteria?.graduation_status || 'MEZUN',
-      kpss_type: defaultCriteria?.kpss_type || 'KPSSP3',
-      kpss_score: defaultCriteria?.kpss_score ?? undefined,
-      gender: defaultCriteria?.gender || 'BELIRTILMEMIS',
-      height: defaultCriteria?.height ?? undefined,
-      weight: defaultCriteria?.weight ?? undefined,
-      birth_date: defaultCriteria?.birth_date || '',
-      military_status: defaultCriteria?.military_status || 'YOK',
-      ...defaultCriteria,
     };
-    await updateProfile(newProfile);
+
+    const cleanedFavs = sanitizeFavorites(serverFavorites || []);
+    setProfile(finalProfile);
+    setFavorites(cleanedFavs);
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(finalProfile));
+      localStorage.setItem(FAVS_KEY, JSON.stringify(cleanedFavs));
+
+      const dbRaw = localStorage.getItem(ACCOUNTS_DB_KEY) || '{}';
+      const db = JSON.parse(dbRaw);
+      const existingRec = db[normEmail] || {};
+      db[normEmail] = {
+        ...existingRec,
+        profile: finalProfile,
+        favorites: cleanedFavs,
+        fullName: resolvedName,
+        isRegistered: true,
+        passwordHash: clientAuthHash || existingRec.passwordHash,
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(ACCOUNTS_DB_KEY, JSON.stringify(db));
+    } catch (e) {
+      console.warn('Oturum profil önbellek yazma hatası:', e);
+    }
   };
 
   const resetProfile = () => {
@@ -457,7 +420,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         isLoading,
         isLoggedIn,
         userEmail,
-        loginLocal,
+        completeAuthSession,
         logout,
         favorites,
         toggleFavorite,

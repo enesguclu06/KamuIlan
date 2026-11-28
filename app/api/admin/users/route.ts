@@ -1,51 +1,109 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import { supabaseAdmin } from '@/lib/supabase/admin';
-
-function getProfilesFilePath() {
-  const baseDir = process.env.NODE_ENV === 'production' && process.platform !== 'win32' ? '/tmp' : process.cwd();
-  return path.join(baseDir, '.user_profiles.json');
-}
+import { supabaseAdmin, isAdminConfigured } from '@/lib/supabase/admin';
+import {
+  loadLocalProfiles,
+  saveLocalProfiles,
+  findSupabaseUserByEmail,
+  sanitizeEmail,
+} from '@/lib/server/user-store';
 
 export async function GET(req: NextRequest) {
   try {
     const usersMap: Record<string, any> = {};
 
-    // 1. Sunucu dosyasından (.user_profiles.json) oku
+    // 1. Sunucu dosyasından (.user_profiles.json) oku (passwordHash asla dönülmez)
     try {
-      const filePath = getProfilesFilePath();
-      if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        if (content) {
-          const parsed = JSON.parse(content);
-          Object.values(parsed).forEach((record: any) => {
-            if (record?.email) {
-              const email = record.email.toLowerCase().trim();
-              const isRegistered = record.isRegistered !== undefined 
-                ? Boolean(record.isRegistered) 
-                : (!email.includes('@yerel.kamuilan') && !email.startsWith('misafir_'));
+      const parsed = loadLocalProfiles();
+      Object.values(parsed).forEach((record: any) => {
+        if (record?.email) {
+          const email = sanitizeEmail(record.email);
+          const isRegistered =
+            record.isRegistered !== undefined
+              ? Boolean(record.isRegistered)
+              : !email.includes('@yerel.kamuilan') && !email.startsWith('misafir_');
 
-              usersMap[email] = {
-                email,
-                fullName: record.fullName || record.profile?.full_name || (isRegistered ? email.split('@')[0] : 'Misafir Aday'),
-                profile: record.profile || null,
-                favorites: record.favorites || [],
-                isRegistered,
-                registeredAt: record.registeredAt || record.updatedAt,
-                updatedAt: record.updatedAt || new Date().toISOString(),
-                source: 'SERVER_DB',
-              };
-            }
-          });
+          usersMap[email] = {
+            email,
+            fullName:
+              record.fullName ||
+              record.profile?.full_name ||
+              (isRegistered ? email.split('@')[0] : 'Misafir Aday'),
+            profile: record.profile || null,
+            favorites: record.favorites || [],
+            isRegistered,
+            hasPassword: Boolean(record.passwordHash),
+            registeredAt: record.registeredAt || record.updatedAt,
+            updatedAt: record.updatedAt || new Date().toISOString(),
+            source: 'SERVER_DB',
+          };
         }
-      }
+      });
     } catch (e) {
       console.warn('Sunucu profilleri okuma hatası:', e);
     }
 
-    // 2. Supabase varsa user_profiles tablosundan çek
-    if (supabaseAdmin) {
+    // 2. Supabase Auth (auth.users) + user_profiles tablosundan tüm gerçek kayıtlı kullanıcıları çek
+    if (isAdminConfigured && supabaseAdmin) {
+      const authUsersById: Record<string, any> = {};
+
+      try {
+        let page = 1;
+        while (page <= 10) {
+          const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers({
+            page,
+            perPage: 200,
+          });
+          if (authError || !authData?.users?.length) break;
+
+          for (const authUser of authData.users) {
+            authUsersById[authUser.id] = authUser;
+            const email = authUser.email ? sanitizeEmail(authUser.email) : '';
+            if (!email) continue;
+
+            const meta = authUser.user_metadata || {};
+            const existing = usersMap[email] || {};
+            const metaProfile = meta.profile || {};
+
+            usersMap[email] = {
+              email,
+              userId: authUser.id,
+              fullName:
+                meta.full_name ||
+                metaProfile.full_name ||
+                existing.fullName ||
+                email.split('@')[0],
+              profile: {
+                ...(existing.profile || {}),
+                ...metaProfile,
+                email,
+                full_name:
+                  meta.full_name ||
+                  metaProfile.full_name ||
+                  existing.fullName ||
+                  email.split('@')[0],
+              },
+              favorites: Array.isArray(meta.favorites)
+                ? meta.favorites
+                : existing.favorites || [],
+              isRegistered: true,
+              hasPassword: true,
+              registeredAt: authUser.created_at || existing.registeredAt,
+              updatedAt:
+                authUser.updated_at ||
+                authUser.last_sign_in_at ||
+                existing.updatedAt ||
+                authUser.created_at,
+              source: 'SUPABASE',
+            };
+          }
+
+          if (authData.users.length < 200) break;
+          page++;
+        }
+      } catch (e) {
+        console.warn('Supabase auth.users listeleme hatası:', e);
+      }
+
       try {
         const { data: dbProfiles, error: dbError } = await supabaseAdmin
           .from('user_profiles')
@@ -54,32 +112,42 @@ export async function GET(req: NextRequest) {
 
         if (dbProfiles && !dbError) {
           for (const row of dbProfiles) {
-            const email = (row.email || row.user_id || '').toLowerCase().trim();
-            if (email) {
-              const existing = usersMap[email] || {};
-              const isRegistered = row.is_registered !== undefined 
-                ? Boolean(row.is_registered) 
-                : (!email.includes('@yerel.kamuilan') && !email.startsWith('misafir_'));
+            const matchedAuthUser = row.user_id ? authUsersById[row.user_id] : null;
+            const email = sanitizeEmail(
+              row.email || matchedAuthUser?.email || row.user_id || ''
+            );
+            if (!email) continue;
 
-              usersMap[email] = {
-                email,
-                fullName: row.full_name || existing.fullName || (isRegistered ? email.split('@')[0] : 'Misafir Aday'),
-                profile: {
-                  ...existing.profile,
-                  ...row,
-                  full_name: row.full_name || existing.fullName,
-                },
-                favorites: existing.favorites || [],
-                isRegistered,
-                registeredAt: row.created_at || existing.registeredAt || row.updated_at,
-                updatedAt: row.updated_at || existing.updatedAt || new Date().toISOString(),
-                source: 'SUPABASE',
-              };
-            }
+            const existing = usersMap[email] || {};
+            const isRegistered =
+              row.is_registered !== undefined
+                ? Boolean(row.is_registered)
+                : existing.isRegistered !== undefined
+                  ? existing.isRegistered
+                  : !email.includes('@yerel.kamuilan') && !email.startsWith('misafir_');
+
+            usersMap[email] = {
+              ...existing,
+              email,
+              fullName:
+                row.full_name ||
+                existing.fullName ||
+                (isRegistered ? email.split('@')[0] : 'Misafir Aday'),
+              profile: {
+                ...row,
+                ...(existing.profile || {}),
+                full_name: row.full_name || existing.fullName,
+              },
+              favorites: existing.favorites || [],
+              isRegistered,
+              registeredAt: row.created_at || existing.registeredAt || row.updated_at,
+              updatedAt: row.updated_at || existing.updatedAt || new Date().toISOString(),
+              source: 'SUPABASE',
+            };
           }
         }
       } catch (e) {
-        console.warn('Supabase profilleri çekme hatası:', e);
+        console.warn('Supabase user_profiles çekme hatası:', e);
       }
     }
 
@@ -105,32 +173,36 @@ export async function GET(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const email = searchParams.get('email')?.toLowerCase().trim();
+    const rawEmail = searchParams.get('email');
 
-    if (!email) {
-      return NextResponse.json({ error: 'Silinecek e-posta adresi belirtilmelidir.' }, { status: 400 });
+    if (!rawEmail) {
+      return NextResponse.json(
+        { error: 'Silinecek e-posta adresi belirtilmelidir.' },
+        { status: 400 }
+      );
     }
+
+    const email = sanitizeEmail(rawEmail);
 
     // 1. Sunucu dosyasından sil
     try {
-      const filePath = getProfilesFilePath();
-      if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        if (content) {
-          const parsed = JSON.parse(content);
-          if (parsed[email]) {
-            delete parsed[email];
-            fs.writeFileSync(filePath, JSON.stringify(parsed, null, 2), 'utf-8');
-          }
-        }
+      const parsed = loadLocalProfiles();
+      if (parsed[email]) {
+        delete parsed[email];
+        saveLocalProfiles(parsed);
       }
     } catch (e) {
       console.warn('Dosyadan profil silme hatası:', e);
     }
 
-    // 2. Supabase varsa sil
-    if (supabaseAdmin) {
+    // 2. Supabase Auth + user_profiles varsa sil
+    if (isAdminConfigured && supabaseAdmin) {
       try {
+        const supaUser = await findSupabaseUserByEmail(email);
+        if (supaUser) {
+          await supabaseAdmin.from('user_profiles').delete().eq('user_id', supaUser.id);
+          await supabaseAdmin.auth.admin.deleteUser(supaUser.id);
+        }
         await supabaseAdmin.from('user_profiles').delete().eq('email', email);
       } catch (e) {
         console.warn('Supabase profil silme hatası:', e);
@@ -139,7 +211,7 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `${email} kullanıcısı ve kayıtları başarıyla silindi.`
+      message: `${email} kullanıcısı ve kayıtları başarıyla silindi.`,
     });
   } catch (error: any) {
     return NextResponse.json(
